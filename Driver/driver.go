@@ -25,38 +25,11 @@ type DriverAccount struct {
 }
 
 func home(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "~ Ride-Sharing Platform ~\n")
-
-	// mysql init
-	db, err := sql.Open("mysql", "root:password@tcp(127.0.0.1:3306)/db_assignment1")
-
-	// handle db error
-	if err != nil {
-		panic(err.Error())
-	}
-
-	// defer the close till after main function has finished executing
-	defer db.Close()
-
-	if r.Header.Get("Content-type") == "application/json" {
-		// using POST to start trip
-		// if availability is false, driver has been assigned a trip
-		params := mux.Vars(r)
-
-		if !GetDriverStatus(db, params["driverid"]) {
-			var s string
-			r.URL.Query().Get(s)
-			fmt.Println(s)
-			// insert tripstartdt
-			w.WriteHeader(http.StatusAccepted)
-			w.Write([]byte("202 - Trip Start DateTime Stored"))
-		}
-	}
+	fmt.Fprintf(w, "~ Ride-Sharing Platform ~")
 }
 
 func driver(w http.ResponseWriter, r *http.Request) {
 	//fmt.Fprintf(w, "Create an account")
-	//params := mux.Vars(r)
 
 	// mysql init
 	db, err := sql.Open("mysql", "root:password@tcp(127.0.0.1:3306)/db_assignment1")
@@ -118,6 +91,73 @@ func driver(w http.ResponseWriter, r *http.Request) {
 					w.Write([]byte("201 - Driver Account Created"))
 				}
 			}
+		}
+	}
+}
+
+func hasTrip(w http.ResponseWriter, r *http.Request) {
+	// mysql init
+	db, err := sql.Open("mysql", "root:password@tcp(127.0.0.1:3306)/db_assignment1")
+
+	// handle db error
+	if err != nil {
+		panic(err.Error())
+	}
+
+	// defer the close till after main function has finished executing
+	defer db.Close()
+
+	params := mux.Vars(r)
+	// if availability is false, driver has been assigned a trip
+	if !GetDriverStatus(db, params["driverid"]) {
+		act := r.URL.Query().Get("action")
+
+		switch act {
+		case "start":
+			// insert tripstartdt
+			w.WriteHeader(http.StatusAccepted)
+			w.Write([]byte("202 - Trip Start DateTime Stored"))
+		case "end":
+			// insert tripenddt
+			w.WriteHeader(http.StatusAccepted)
+			w.Write([]byte("202 - Trip End DateTime Stored"))
+		default:
+			// error of unknown action parsed in
+			w.WriteHeader(http.StatusNotAcceptable)
+			w.Write([]byte("406 - Unknown action"))
+		}
+
+	} else {
+		// TDL driver has not been assigned a trip.
+		w.Write([]byte("Driver not assigned to trip"))
+	}
+}
+
+// for communcating with rest api in trips microservice
+func availDrivers(w http.ResponseWriter, r *http.Request) {
+	// mysql init
+	db, err := sql.Open("mysql", "root:password@tcp(127.0.0.1:3306)/db_assignment1")
+
+	// handle db error
+	if err != nil {
+		panic(err.Error())
+	}
+
+	// defer the close till after main function has finished executing
+	defer db.Close()
+
+	// using GET to retrieve a available driver
+	if r.Method == "GET" {
+		// check if there are available drivers
+		driver := DriversAvail(db)
+		if driver.Driverid != "" {
+			w.WriteHeader(http.StatusCreated)
+			w.Write([]byte("201 - Driver Found!"))
+			json.NewEncoder(w).Encode(driver)
+		} else {
+			// no available drivers
+			w.WriteHeader(http.StatusConflict)
+			w.Write([]byte("409 - Driver not found"))
 		}
 	}
 }
@@ -210,6 +250,29 @@ func UpdatePassengerDB(db *sql.DB, DA DriverAccount) bool {
 	}
 }
 
+// retrieves available driver
+// returns driver's details
+func DriversAvail(db *sql.DB) DriverAccount {
+	var driver DriverAccount
+
+	query := fmt.Sprintln(
+		`select BIN_TO_UUID(DriverID), FirstName, LastName, CarLicenseNum 
+		 from drivers where Availability is true 
+		 order by rand() limit 1;`)
+
+	results, err := db.Query(query)
+
+	if err != nil {
+		panic(err.Error())
+	}
+
+	if results.Next() {
+		results.Scan(&driver.Driverid, &driver.Firstname, &driver.Lastname, &driver.Carlicensenum)
+	}
+
+	return driver
+}
+
 func main() {
 	// // mysql init
 	// db, err := sql.Open("mysql", "root:password@tcp(127.0.0.1:3306)/db_assignment1")
@@ -227,9 +290,11 @@ func main() {
 	//start router
 
 	router := mux.NewRouter()
-	router.HandleFunc("/{driverid}", home)
 
+	router.HandleFunc("/", home)
 	router.HandleFunc("/driver", driver).Methods("POST", "PUT")
+	router.HandleFunc("/availabledrivers", availDrivers).Methods("GET")
+	router.HandleFunc("/driver/{driverid}", hasTrip)
 
 	fmt.Println("listening at port 2000")
 	log.Fatal(http.ListenAndServe(":2000", router))

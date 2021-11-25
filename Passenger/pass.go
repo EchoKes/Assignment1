@@ -26,11 +26,9 @@ type Trips struct {
 }
 
 type TripRequest struct {
-	// trip request should parse in PassengerID, PickUpCode, DropOffCode
-	// if system succesfully assigned driver then insert trip, update availability
-	// when driver starts trip, alter db to include datetime
 	Passengerid string `json:"PassengerID"`
-	Driverid    string `json:"DriverID"`
+	Firstname   string `json:"FirstName"`
+	Lastname    string `json:"LastName"`
 	PickUpCode  string `json:"PickUpCode"`
 	DropOffCode string `json:"DropOffCode"`
 }
@@ -103,6 +101,7 @@ func passenger(w http.ResponseWriter, r *http.Request) {
 				// convert JSON to obj
 				json.Unmarshal(regBody, &acc)
 				// check if account already exist. if exist:update, else:create
+				// TDL separate function. one for checking existence thru id, the other from mobile and email
 				if PassengerExist(db, acc.Mobile, acc.Email) {
 					//TDL check if user input correct
 					// update account
@@ -121,68 +120,6 @@ func passenger(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func request(w http.ResponseWriter, r *http.Request) {
-	// mysql init
-	db, err := sql.Open("mysql", "root:password@tcp(127.0.0.1:3306)/db_assignment1")
-
-	// handle db error
-	if err != nil {
-		panic(err.Error())
-	}
-
-	// defer the close till after main function has finished executing
-	defer db.Close()
-
-	if r.Header.Get("Content-type") == "application/json" {
-		// using post to request a trip
-		if r.Method == "POST" {
-			var tripReq TripRequest
-			regBody, err := ioutil.ReadAll(r.Body)
-
-			if err == nil {
-				// convert JSON to obj
-				json.Unmarshal(regBody, &tripReq)
-				// retrieve driver details if trip request successful
-				driver := DriversAvail(db)
-				if len(driver.Driverid) > 0 {
-					w.WriteHeader(http.StatusCreated)
-					w.Write([]byte("201 - Driver Found!"))
-				} else {
-					w.WriteHeader(http.StatusNotFound)
-					//TDL might have to change status
-					w.Write([]byte("404 - No Available Driver"))
-				}
-			}
-		}
-	}
-}
-
-// test function to return driver if avail
-func getDriver(w http.ResponseWriter, r *http.Request) {
-	// mysql init
-	db, err := sql.Open("mysql", "root:password@tcp(127.0.0.1:3306)/db_assignment1")
-
-	// handle db error
-	if err != nil {
-		panic(err.Error())
-	}
-
-	// defer the close till after main function has finished executing
-	defer db.Close()
-
-	driver := DriversAvail(db)
-	if len(driver.Driverid) > 0 {
-		w.WriteHeader(http.StatusCreated)
-		w.Write([]byte("201 - Driver found!"))
-		json.NewEncoder(w).Encode(driver)
-	} else {
-		w.WriteHeader(http.StatusNotFound)
-		//TDL might have to change status
-		w.Write([]byte("404 - No Available Driver"))
-	}
-
-}
-
 func InsertPassengerDB(db *sql.DB, PA PassengerAccount) {
 	fn := PA.Firstname
 	ln := PA.Lastname
@@ -191,7 +128,7 @@ func InsertPassengerDB(db *sql.DB, PA PassengerAccount) {
 
 	query := fmt.Sprintf(
 		`insert into passengers() 
-		 values(UUID_TO_BIN(UUID()), '%s','%s','%s','%s', false)`,
+		 values(UUID_TO_BIN(UUID()), '%s','%s','%s','%s', true)`,
 		fn, ln, mn, ea)
 	_, err := db.Query(query)
 
@@ -244,15 +181,13 @@ func PassengerExist(db *sql.DB, mn string, ea string) bool {
 	return false
 }
 
-// retrieves available driver
-// returns driver's name and car license number if found
-func DriversAvail(db *sql.DB) Driver {
-	var driver Driver
-
-	query := fmt.Sprintln(
-		`select BIN_TO_UUID(DriverID), FirstName, LastName, CarLicenseNum 
-		 from db_assignment1.drivers where Availability is true 
-		 order by rand() limit 1;`)
+// retrives passenger availability
+// returns bool based on availability
+func IsPassengerAvail(db *sql.DB, id string) bool {
+	r := false
+	query := fmt.Sprintf(
+		`select Availability from passengers where 
+		 PassengerID = UUID_TO_BIN('%s')`, id)
 
 	results, err := db.Query(query)
 
@@ -261,33 +196,10 @@ func DriversAvail(db *sql.DB) Driver {
 	}
 
 	if results.Next() {
-		results.Scan(&driver.Driverid, &driver.Firstname, &driver.Lastname, &driver.Carlicensenum)
+		results.Scan(&r)
 	}
-
-	return driver
+	return r
 }
-
-// TDL Remove this function after updating passengeraccount struct to include PassengerID
-// retrieval of PassengerID to aid UpdatePassengerDB() function
-// func GetCurrentPID(db *sql.DB, ea string) string {
-// 	id := ""
-// 	query := fmt.Sprintf(
-// 		`select BIN_TO_UUID(PassengerID) from passengers
-// 		 where EmailAddr = '%s'`, ea)
-
-// 	results, err := db.Query(query)
-
-// 	if err != nil {
-// 		panic(err.Error())
-// 	}
-
-// 	for results.Next() {
-// 		var r string
-// 		results.Scan(&r)
-// 		id = r
-// 	}
-// 	return id
-// }
 
 func main() {
 	// // mysql init
@@ -308,8 +220,6 @@ func main() {
 	router.HandleFunc("/", home)
 
 	router.HandleFunc("/passenger", passenger).Methods("POST", "PUT")
-	router.HandleFunc("/passenger/request", request).Methods("POST")
-	router.HandleFunc("/getDriver", getDriver)
 
 	fmt.Println("listening at port 1000")
 	log.Fatal(http.ListenAndServe(":1000", router))

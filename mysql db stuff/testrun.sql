@@ -34,7 +34,7 @@ use db_assignment1;
 
 -- create table Trips
 -- (
--- 	TripID binary(16),
+-- 	TripID binary(16) primary key,
 -- 	PassengerID binary(16),
 -- 	DriverID binary(16),
 -- 	PickUpCode varchar(6),
@@ -72,8 +72,10 @@ use db_assignment1;
 -- set Availability=true
 -- where PassengerID='<To be set>';
 
--- insert into db_assignment1.trips()
--- values(UUID_TO_BIN(UUID()), UUID_TO_BIN(passengerid), UUID_TO_BIN(driverid), '<pucode>', 'docode', datetime(), datetime());
+-- -- for inserting trip before start trip end trip
+
+-- insert into trips(TripID, PassengerID, DriverID, PickUpCode, DropOffCode)
+-- values(UUID_TO_BIN(UUID()), UUID_TO_BIN(passengerid), UUID_TO_BIN(driverid), '460160', '510294');
 
 
 -- -- (for viewing trip history)
@@ -137,4 +139,21 @@ use db_assignment1;
 -- select Availability from drivers
 -- where DriverID = UUID_TO_BIN("d1609e2e-4adf-11ec-9339-049226daf8e1")
 
--- select BIN_TO_UUID(DriverID) from drivers
+
+-- select BIN_TO_UUID(PassengerID), FirstName, Availability from passengers;
+
+-- insert into trips(TripID, PassengerID, DriverID, PickUpCode, DropOffCode) 
+-- values(UUID_TO_BIN(UUID()), UUID_TO_BIN('0d2a0132-4e07-11ec-87b6-049226daf8e1'), UUID_TO_BIN('d1609e2e-4adf-11ec-9339-049226daf8e1'),'460100','521111');
+
+
+-- delete from trips where TripID = UUID_TO_BIN('0089a83a-4e0f-11ec-87b6-049226daf8e1');
+-- select BIN_TO_UUID(TripID) from trips
+
+-- select BIN_TO_UUID(DriverID), FirstName, LastName, CarLicenseNum 
+-- from drivers where Availability is false
+-- order by rand() limit 1;
+
+
+
+
+select * from trips
