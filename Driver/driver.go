@@ -41,25 +41,15 @@ func home(w http.ResponseWriter, r *http.Request) {
 	if r.Header.Get("Content-type") == "application/json" {
 		// using POST to start trip
 		// if availability is false, driver has been assigned a trip
-		if r.Method == "POST" {
-			// reading user input
-			var newAcc DriverAccount
-			regBody, err := ioutil.ReadAll(r.Body)
+		params := mux.Vars(r)
 
-			if err == nil {
-				// convert JSON to obj
-				json.Unmarshal(regBody, &newAcc)
-				// check if availability is false
-				if !GetDriverStatus(db, newAcc.Driverid) {
-					// insert tripstartdt
-					w.WriteHeader(http.StatusAccepted)
-					w.Write([]byte("202 - Trip Start DateTime Stored"))
-				} // TDL else statement
-
-			} else {
-				w.WriteHeader(http.StatusUnprocessableEntity)
-				w.Write([]byte("422 - Please enter driver id in JSON format"))
-			}
+		if !GetDriverStatus(db, params["driverid"]) {
+			var s string
+			r.URL.Query().Get(s)
+			fmt.Println(s)
+			// insert tripstartdt
+			w.WriteHeader(http.StatusAccepted)
+			w.Write([]byte("202 - Trip Start DateTime Stored"))
 		}
 	}
 }
@@ -237,7 +227,7 @@ func main() {
 	//start router
 
 	router := mux.NewRouter()
-	router.HandleFunc("/", home)
+	router.HandleFunc("/{driverid}", home)
 
 	router.HandleFunc("/driver", driver).Methods("POST", "PUT")
 
