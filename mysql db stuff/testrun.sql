@@ -55,14 +55,19 @@ use db_assignment1;
 -- -- for creating passenger account
 
 -- insert into passengers()
--- values(UUID_TO_BIN(UUID()), 'kester','yeo','86882678','kesteryeo@hotmail.com', false)
+-- values(UUID_TO_BIN(UUID()), 'ethan','leo','81238765','ethanleo@gmail.com', true);
 
 
 -- -- for creating driver account
 
 -- insert into drivers()
--- values(UUID_TO_BIN(UUID()), 'kester','yeo','86882678','kesteryeo@hotmail.com', 'T0114959D', 'SLC2973C', true);
+-- values(UUID_TO_BIN(UUID()), 'boss','ku','91234567','bossku@MUX.com', 'S0123456A', 'SAC3513D', true);
 
+-- select BIN_TO_UUID(TripID), BIN_TO_UUID(PassengerID), BIN_TO_UUID(DriverID), PickUpCode, DropOffCode, TripStartDT, TripEndDT  
+-- from Trips where PassengerID = UUID_TO_BIN("ce9da0d5-5054-11ec-8928-0433c219c4d5")
+-- order by TripStartDT desc
+
+select * from passengers
 
 -- -- for updating passenger account
 
@@ -117,7 +122,11 @@ use db_assignment1;
 -- and (PassengerID = uuid_to_bin("9dc1cddb-4ea0-11ec-8928-0433c219c4d5") or
 -- DriverID = uuid_to_bin("9dc1cddb-4ea0-11ec-8928-0433c219c4d5")); 
 
-select * from trips
+-- select * from trips
+-- select BIN_TO_UUID(DriverID) from drivers;
+-- update trips set TripStartDT = now() where TripID = UUID_TO_BIN('%s');
+-- update drivers set availability = false where DriverID = UUID_TO_BIN("e9442329-4ea0-11ec-8928-0433c219c4d5")
+
 
 -- select BIN_TO_UUID(TripID) from trips 
 -- where PassengerID = "9dc1cddb-4ea0-11ec-8928-0433c219c4d5" or DriverID = "9dc1cddb-4ea0-11ec-8928-0433c219c4d5" 
