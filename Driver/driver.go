@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strconv"
 
 	_ "github.com/go-sql-driver/mysql"
 
@@ -24,7 +25,15 @@ type DriverAccount struct {
 	Availability  bool   `json:"Availability"`
 }
 
-func home(w http.ResponseWriter, r *http.Request) {
+// // struct NOT IN USE
+// type TripDetails struct {
+// 	Tripid      string `json:"TripID"`
+// 	Passengerid string `json:"PassengerID"`
+// 	Firstname   string `json:"FirstName"`
+// 	Lastname    string `json:"LastName"`
+// }
+
+func landing(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "~ Ride-Sharing Platform ~")
 }
 
@@ -95,7 +104,7 @@ func driver(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func hasTrip(w http.ResponseWriter, r *http.Request) {
+func home(w http.ResponseWriter, r *http.Request) {
 	// mysql init
 	db, err := sql.Open("mysql", "root:password@tcp(127.0.0.1:3306)/db_assignment1")
 
@@ -108,28 +117,35 @@ func hasTrip(w http.ResponseWriter, r *http.Request) {
 	defer db.Close()
 
 	params := mux.Vars(r)
-	// if availability is false, driver has been assigned a trip
-	if !GetDriverStatus(db, params["driverid"]) {
-		act := r.URL.Query().Get("action")
+	driverid := params["driverid"]
 
-		switch act {
-		case "start":
-			// insert tripstartdt
+	if r.Method == "GET" {
+		// if availability is false, driver has been assigned a trip
+		if !GetDriverStatus(db, driverid) {
+			// retrieve details if not available
 			w.WriteHeader(http.StatusAccepted)
-			w.Write([]byte("202 - Trip Start DateTime Stored"))
-		case "end":
-			// insert tripenddt
-			w.WriteHeader(http.StatusAccepted)
-			w.Write([]byte("202 - Trip End DateTime Stored"))
-		default:
-			// error of unknown action parsed in
-			w.WriteHeader(http.StatusNotAcceptable)
-			w.Write([]byte("406 - Unknown action"))
+			w.Write([]byte("202 - Driver on trip"))
+
+		} else {
+			// driver available
+			w.WriteHeader(http.StatusConflict)
+			w.Write([]byte("409 - Driver not assigned to a trip"))
 		}
+	}
 
-	} else {
-		// TDL driver has not been assigned a trip.
-		w.Write([]byte("Driver not assigned to trip"))
+	if r.Header.Get("Content-type") == "application/json" {
+		// updates availability of passenger when trip is successfully created in trip microservice
+		// this method is triggered automatically
+		if r.Method == "POST" {
+			res := strconv.FormatBool(!GetDriverStatus(db, driverid))
+			if UpdateAvailabilityDB(db, driverid, res) {
+				w.WriteHeader(http.StatusAccepted)
+				w.Write([]byte("202 - Driver availability updated"))
+			} else {
+				w.WriteHeader(http.StatusConflict)
+				w.Write([]byte("409 - Unable to update"))
+			}
+		}
 	}
 }
 
@@ -151,13 +167,11 @@ func availDrivers(w http.ResponseWriter, r *http.Request) {
 		// check if there are available drivers
 		driver := DriversAvail(db)
 		if driver.Driverid != "" {
-			w.WriteHeader(http.StatusCreated)
-			w.Write([]byte("201 - Driver Found!"))
 			json.NewEncoder(w).Encode(driver)
 		} else {
 			// no available drivers
 			w.WriteHeader(http.StatusConflict)
-			w.Write([]byte("409 - Driver not found"))
+			w.Write([]byte("409 - nil Driver not found"))
 		}
 	}
 }
@@ -186,26 +200,20 @@ func DriverExist(db *sql.DB, idNum string) bool {
 }
 
 func GetDriverStatus(db *sql.DB, driverid string) bool {
-
+	r := false
 	query := fmt.Sprintf(
 		`select Availability from drivers
 		 where DriverID = UUID_TO_BIN('%s')`, driverid)
 	results, err := db.Query(query)
 
 	if err != nil {
-		return false
-		//panic(err.Error())
+		panic(err.Error())
 	}
 
 	if results.Next() {
-		var r bool
 		results.Scan(&r)
-		fmt.Println(r)
-		if r {
-			return true
-		}
 	}
-	return false
+	return r
 }
 
 func InsertDriverDB(db *sql.DB, DA DriverAccount) {
@@ -250,13 +258,27 @@ func UpdatePassengerDB(db *sql.DB, DA DriverAccount) bool {
 	}
 }
 
+func UpdateAvailabilityDB(db *sql.DB, id string, avail string) bool {
+	query := fmt.Sprintf(
+		`update drivers set Availability = %s 
+		 where DriverID = UUID_TO_BIN('%s');`, avail, id)
+	res, err := db.Exec(query)
+
+	if err != nil {
+		panic(err.Error())
+	}
+
+	rows, _ := res.RowsAffected()
+	return rows == 1
+}
+
 // retrieves available driver
 // returns driver's details
 func DriversAvail(db *sql.DB) DriverAccount {
 	var driver DriverAccount
 
 	query := fmt.Sprintln(
-		`select BIN_TO_UUID(DriverID), FirstName, LastName, CarLicenseNum 
+		`select BIN_TO_UUID(DriverID), FirstName, LastName, CarLicenseNum, Availability 
 		 from drivers where Availability is true 
 		 order by rand() limit 1;`)
 
@@ -267,7 +289,9 @@ func DriversAvail(db *sql.DB) DriverAccount {
 	}
 
 	if results.Next() {
-		results.Scan(&driver.Driverid, &driver.Firstname, &driver.Lastname, &driver.Carlicensenum)
+		results.Scan(&driver.Driverid, &driver.Firstname, &driver.Lastname, &driver.Carlicensenum, &driver.Availability)
+	} else {
+		driver.Driverid = "nil"
 	}
 
 	return driver
@@ -291,10 +315,10 @@ func main() {
 
 	router := mux.NewRouter()
 
-	router.HandleFunc("/", home)
+	router.HandleFunc("/", landing)
 	router.HandleFunc("/driver", driver).Methods("POST", "PUT")
 	router.HandleFunc("/availabledrivers", availDrivers).Methods("GET")
-	router.HandleFunc("/driver/{driverid}", hasTrip)
+	router.HandleFunc("/driver/{driverid}", home).Methods("GET", "POST")
 
 	fmt.Println("listening at port 2000")
 	log.Fatal(http.ListenAndServe(":2000", router))

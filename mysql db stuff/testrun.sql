@@ -1,48 +1,4 @@
--- create database db_assignment1;
-
 use db_assignment1; 
-
--- -- (for creating Passengers table)
-
--- create table Passengers
--- (
--- 	PassengerID binary(16) primary key, 
--- 	FirstName varchar(30),
--- 	LastName varchar(30),
--- 	MobileNo varchar(8),
--- 	EmailAddr varchar(45),
--- 	Availability tinyint(0) default 0
--- );
-
-
--- -- (for creating Drivers table)
-
--- create table Drivers
--- (
--- 	DriverID binary(16) primary key,
--- 	FirstName varchar(30),
--- 	LastName varchar(30),
--- 	MobileNo varchar(8),
--- 	EmailAddr varchar(45),
--- 	IdNum varchar(9),
--- 	CarLicenseNum varchar(8),
--- 	Availability tinyint(0) default 0
--- );
-
-
--- -- (for creating Trips table)
-
--- create table Trips
--- (
--- 	TripID binary(16) primary key,
--- 	PassengerID binary(16),
--- 	DriverID binary(16),
--- 	PickUpCode varchar(6),
--- 	DropOffCode varchar(6),
---     TripStartDT datetime,
---     TripEndDT datetime
--- );
-
 
 -- -- (for searching available drivers)
 
@@ -153,7 +109,18 @@ use db_assignment1;
 -- from drivers where Availability is false
 -- order by rand() limit 1;
 
+-- select BIN_TO_UUID(TripID) as TripID from trips;
+-- delete from trips where TripID = uuid_to_bin("c6bc6211-4fe6-11ec-8928-0433c219c4d5");
 
-
+-- select BIN_TO_UUID(TripID) from trips 
+-- where TripStartDT is null or TripEndDT is null
+-- and (PassengerID = uuid_to_bin("9dc1cddb-4ea0-11ec-8928-0433c219c4d5") or
+-- DriverID = uuid_to_bin("9dc1cddb-4ea0-11ec-8928-0433c219c4d5")); 
 
 select * from trips
+
+-- select BIN_TO_UUID(TripID) from trips 
+-- where PassengerID = "9dc1cddb-4ea0-11ec-8928-0433c219c4d5" or DriverID = "9dc1cddb-4ea0-11ec-8928-0433c219c4d5" 
+-- and if(TripStartDT is null,1,0)=1;
+
+-- select bin_to_uuid(PassengerID) from passengers

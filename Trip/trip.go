@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -21,6 +20,21 @@ type Trip struct {
 	Dropoffcode string `json:"DropOffCode"`
 	Tripstartdt string `json:"TripStartDT"`
 	Tripenddt   string `json:"TripEndDT"`
+}
+
+type Driver struct {
+	Tripid        string `json:"TripID"`
+	Driverid      string `json:"DriverID"`
+	Firstname     string `json:"FirstName"`
+	Lastname      string `json:"LastName"`
+	Carlicensenum string `json:"CarLicenseNum"`
+}
+
+type Passenger struct {
+	Tripid      string `json:"TripID"`
+	Passengerid string `json:"PassengerID"`
+	Firstname   string `json:"FirstName"`
+	Lastname    string `json:"LastName"`
 }
 
 type TripDetails struct {
@@ -58,27 +72,36 @@ func requestTrip(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "POST" {
 			var trip Trip
 			regBody, err := ioutil.ReadAll(r.Body)
-			trip.Passengerid = params["passengerid"]
 
 			if err == nil {
 				json.Unmarshal(regBody, &trip)
+				trip.Passengerid = params["passengerid"]
+				driver := AvailDriver()
+				dID := driver.Driverid
 				// check if there are available drivers
-				if AvailDriver() == "" {
-					fmt.Println("dope")
+				if driver.Driverid != "nil" {
+					// insert trip into db
+					trip.Driverid = dID
+					InsertTripDB(db, trip)
+					tripid := RetrieveTripID(db)
+					w.WriteHeader(http.StatusCreated)
+					w.Write([]byte("201 - Trip Created!"))
+					// update driver & passenger availability to false
+					// posts trip information to both parties
+					fmt.Println(tripid)
+					if tripid != "nil" {
+						// driver.Tripid = tripid
+						UpdatePassenger(params["passengerid"])
+						// var pass Passenger
+						// pass.Tripid = tripid
+						// pass.Passengerid = params["passenderid"]
+						UpdateDriver(dID)
+					}
+				} else {
+					// no available driver
+					w.WriteHeader(http.StatusConflict)
+					w.Write([]byte("409 - No Available Drivers"))
 				}
-
-				// if AvailDriver() != "nil" {
-				// 	// insert trip into db
-				// 	InsertTripDB(db, trip)
-				// 	w.WriteHeader(http.StatusCreated)
-				// 	//w.Write([]byte("201 - Trip Created!"))
-				// 	// update driver & passenger availability to false
-
-				// } else {
-				// 	// no available driver
-				// 	w.WriteHeader(http.StatusConflict)
-				// 	w.Write([]byte("409 - No Available Drivers"))
-				// }
 
 			} else {
 				w.WriteHeader(http.StatusUnprocessableEntity)
@@ -88,40 +111,114 @@ func requestTrip(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// returns DriverID from driver microservice if there found, otherwise "nil".
-func AvailDriver() string {
-	type Driver struct {
-		Driverid      string `json:"DriverID"`
-		Firstname     string `json:"FirstName"`
-		Lastname      string `json:"LastName"`
-		Carlicensenum string `json:"CarLicenseNum"`
+func tripStartEnd(w http.ResponseWriter, r *http.Request) {
+	// mysql init
+	db, err := sql.Open("mysql", "root:password@tcp(127.0.0.1:3306)/db_assignment1")
+
+	// handle db error
+	if err != nil {
+		panic(err.Error())
 	}
 
-	url := "http://localhost:2000/availabledrivers"
+	// defer the close till after main function has finished executing
+	defer db.Close()
 
+	params := mux.Vars(r)
+	driverid := params["driverid"]
+	tripid := TempRetrieveTripID(db, driverid)
+	passid := RetrievePassID(db, tripid)
+	act := r.URL.Query().Get("action")
+
+	if r.Header.Get("Content-type") == "application/json" {
+		// POST method to insert trip row into db
+		if r.Method == "POST" {
+			switch act {
+			case "start":
+				// insert tripstartdt into db
+				if InsertTripTime(db, tripid, "TripStartDT") {
+					w.WriteHeader(http.StatusAccepted)
+					w.Write([]byte("202 - Trip Start DateTime Stored"))
+				}
+			case "end":
+				// insert tripenddt into db & update users' availability
+				if InsertTripTime(db, tripid, "TripEndDT") {
+					w.WriteHeader(http.StatusAccepted)
+					w.Write([]byte("202 - Trip End DateTime Stored"))
+					UpdatePassenger(passid)
+					UpdateDriver(driverid)
+				}
+			default:
+				// error of unknown action parsed in
+				w.WriteHeader(http.StatusNotAcceptable)
+				w.Write([]byte("406 - Unknown action"))
+			}
+		}
+	}
+}
+
+func getPassengerTrips(w http.ResponseWriter, r *http.Request) {
+	// mysql init
+	db, err := sql.Open("mysql", "root:password@tcp(127.0.0.1:3306)/db_assignment1")
+
+	// handle db error
+	if err != nil {
+		panic(err.Error())
+	}
+
+	// defer the close till after main function has finished executing
+	defer db.Close()
+
+	params := mux.Vars(r)
+	passid := params["passengerid"]
+
+	if r.Method == "GET" {
+		triplist := GetAllTrips(db, passid)
+		json.NewEncoder(w).Encode(triplist)
+	}
+
+}
+
+// returns DriverID from driver microservice if there found, otherwise "nil".
+func AvailDriver() Driver {
+	url := "http://localhost:2000/availabledrivers"
+	var d Driver
 	if resp, err := http.Get(url); err == nil {
 		defer resp.Body.Close()
 
 		if body, err := ioutil.ReadAll(resp.Body); err == nil {
-			var d Driver
 			json.Unmarshal(body, &d)
-			return d.Driverid
 		} else {
 			log.Fatal(err)
 		}
 	} else {
 		log.Fatal(err)
 	}
-	return "nil"
+	return d
 }
 
-// encodes json string of passenger details after system assigned
-// post it to driver microservice
-func UpdateDriverMS(details TripDetails) {
-	url := fmt.Sprintf("http://localhost:2000/driver/%s", details.Driverid)
-	jsonValue, _ := json.Marshal(details)
+// returns details of passenger from driver microservice using id
+func PassengerDetails(id string) Passenger {
+	url := "http://localhost:1000/passenger/details/" + id
+	var p Passenger
+	if resp, err := http.Get(url); err == nil {
+		defer resp.Body.Close()
 
-	response, err := http.Post(url, "application/json", bytes.NewBuffer(jsonValue))
+		if body, err := ioutil.ReadAll(resp.Body); err == nil {
+			json.Unmarshal(body, &p)
+		} else {
+			log.Fatal(err)
+		}
+	} else {
+		log.Fatal(err)
+	}
+
+	return p
+}
+
+// post it to driver microservice to update availability
+func UpdateDriver(driverid string) {
+	url := fmt.Sprintf("http://localhost:2000/driver/%s", driverid)
+	response, err := http.Post(url, "application/json", nil)
 	if err != nil {
 		data, _ := ioutil.ReadAll(response.Body)
 		fmt.Println(string(data))
@@ -129,13 +226,10 @@ func UpdateDriverMS(details TripDetails) {
 	}
 }
 
-// encodes json string of driver details after system assigned
-// post it to passenger microservice
-func UpdatePassengerMS(details TripDetails) {
-	url := fmt.Sprintf("http://localhost:1000/Passenger/%s", details.Passengerid)
-	jsonValue, _ := json.Marshal(details)
-
-	response, err := http.Post(url, "application/json", bytes.NewBuffer(jsonValue))
+// post it to passenger microservice to update availability
+func UpdatePassenger(passengerid string) {
+	url := fmt.Sprintf("http://localhost:1000/passenger/%s", passengerid)
+	response, err := http.Post(url, "application/json", nil)
 	if err != nil {
 		data, _ := ioutil.ReadAll(response.Body)
 		fmt.Println(string(data))
@@ -144,6 +238,7 @@ func UpdatePassengerMS(details TripDetails) {
 }
 
 // db function to insert a trip row
+// returns tripid
 func InsertTripDB(db *sql.DB, trip Trip) {
 	pid := trip.Passengerid
 	did := trip.Driverid
@@ -152,14 +247,116 @@ func InsertTripDB(db *sql.DB, trip Trip) {
 
 	query := fmt.Sprintf(
 		`insert into trips(TripID, PassengerID, DriverID, PickUpCode, DropOffCode) 
-		 values(UUID_TO_BIN(UUID()), UUID_TO_BIN('%s'), UUID_TO_BIN('%s'),'%s','%s')`,
+		 values(UUID_TO_BIN(UUID()), UUID_TO_BIN('%s'), UUID_TO_BIN('%s'),'%s','%s');`,
 		pid, did, puc, doc)
 
-	_, err := db.Query(query)
+	_, err := db.Exec(query)
 
 	if err != nil {
 		panic(err.Error())
 	}
+}
+
+// db function to retrieve tripid after insertion
+func RetrieveTripID(db *sql.DB) string {
+	id := "nil"
+
+	query := `select BIN_TO_UUID(@uuid) as TripID;`
+	result, err := db.Query(query)
+
+	if err != nil {
+		panic(err.Error())
+	}
+	if result.Next() {
+		result.Scan(&id)
+	}
+
+	return id
+}
+
+// temp db function to retrieve tripid
+func TempRetrieveTripID(db *sql.DB, userid string) string {
+	id := "nil"
+
+	query := fmt.Sprintf(
+		`select BIN_TO_UUID(TripID) from trips 
+		 where TripStartDT is null or TripEndDT is null
+		 and (PassengerID = UUID_TO_BIN('%s') or
+		 DriverID = UUID_TO_BIN('%s'));`, userid, userid)
+
+	result, err := db.Query(query)
+
+	if err != nil {
+		panic(err.Error())
+	}
+	if result.Next() {
+		result.Scan(&id)
+	}
+
+	return id
+}
+
+// retrieves passengerid using trip id
+func RetrievePassID(db *sql.DB, tripid string) string {
+	id := "nil"
+
+	query := fmt.Sprintf(
+		`select BIN_TO_UUID(PassengerID) from trips 
+		 where TripID = UUID_TO_BIN('%s');`, tripid)
+
+	result, err := db.Query(query)
+
+	if err != nil {
+		panic(err.Error())
+	}
+	if result.Next() {
+		result.Scan(&id)
+	}
+
+	return id
+}
+
+// db function to insert either trip start or end datetime
+// returns true if successful; false otherwise
+func InsertTripTime(db *sql.DB, id string, action string) bool {
+	query := fmt.Sprintf(
+		`update trips set %s = NOW() 
+		 where TripID = UUID_TO_BIN('%s');`,
+		action, id)
+
+	res, err := db.Exec(query)
+
+	if err != nil {
+		panic(err.Error())
+	}
+
+	rows, _ := res.RowsAffected()
+
+	return rows == 1
+}
+
+func GetAllTrips(db *sql.DB, passid string) []Trip {
+	var triplist []Trip
+
+	query := fmt.Sprintf(
+		`select BIN_TO_UUID(TripID), BIN_TO_UUID(PassengerID), BIN_TO_UUID(DriverID)
+		 , PickUpCode, DropOffCode, TripStartDT, TripEndDT  
+		 from Trips where PassengerID = UUID_TO_BIN('%s')
+		 order by TripStartDT desc;`, passid)
+
+	res, err := db.Query(query)
+
+	if err != nil {
+		panic(err.Error())
+	}
+
+	for res.Next() {
+		var t Trip
+		res.Scan(&t.Driverid, &t.Passengerid, &t.Driverid, &t.Pickupcode, &t.Dropoffcode, &t.Tripstartdt, &t.Tripenddt)
+		triplist = append(triplist, t)
+	}
+
+	return triplist
 }
 
 func main() {
@@ -180,6 +377,8 @@ func main() {
 	router := mux.NewRouter()
 	router.HandleFunc("/", home)
 	router.HandleFunc("/passenger/{passengerid}", requestTrip).Methods("POST")
+	router.HandleFunc("/trip/{driverid}", tripStartEnd).Methods("POST")
+	router.HandleFunc("/trips/{passengerid}", getPassengerTrips).Methods("GET")
 
 	fmt.Println("listening at port 3000")
 	log.Fatal(http.ListenAndServe(":3000", router))

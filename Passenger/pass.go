@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strconv"
 
 	_ "github.com/go-sql-driver/mysql"
 
@@ -33,26 +34,30 @@ type TripRequest struct {
 	DropOffCode string `json:"DropOffCode"`
 }
 
-type Driver struct {
-	Driverid      string `json:"DriverID"`
-	Firstname     string `json:"FirstName"`
-	Lastname      string `json:"LastName"`
-	Mobile        string `json:"MobileNo"`
-	Email         string `json:"EmailAddr"`
-	IdNum         string `json:"IdNum"`
-	Carlicensenum string `json:"CarLicenseNum"`
-	Availability  bool   `json:"Availability"`
+type Trip struct {
+	Passengerid string `json:"PassengerID"`
+	Driverid    string `json:"DriverID"`
+	Pickupcode  string `json:"PickUpCode"`
+	Dropoffcode string `json:"DropOffCode"`
+	Tripstartdt string `json:"TripStartDT"`
+	Tripenddt   string `json:"TripEndDT"`
 }
 
-//var users map[string]PassengerAccount
+// // stuct NOT IN USE
+// type TripDetails struct {
+// 	Tripid        string `json:"TripID"`
+// 	Driverid      string `json:"DriverID"`
+// 	Firstname     string `json:"FirstName"`
+// 	Lastname      string `json:"LastName"`
+// 	Carlicensenum string `json:"CarLicenseNum"`
+// }
 
-func home(w http.ResponseWriter, r *http.Request) {
+func landing(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "~ Ride-Sharing Platform ~")
 }
 
 func passenger(w http.ResponseWriter, r *http.Request) {
 	//fmt.Fprintf(w, "Create an account")
-	//params := mux.Vars(r)
 
 	// mysql init
 	db, err := sql.Open("mysql", "root:password@tcp(127.0.0.1:3306)/db_assignment1")
@@ -120,6 +125,115 @@ func passenger(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func home(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "~ Welcome Passenger! ~")
+
+	params := mux.Vars(r)
+	passengerid := params["passengerid"]
+
+	// mysql init
+	db, err := sql.Open("mysql", "root:password@tcp(127.0.0.1:3306)/db_assignment1")
+
+	// handle db error
+	if err != nil {
+		panic(err.Error())
+	}
+
+	// defer the close till after main function has finished executing
+	defer db.Close()
+
+	// using GET to retrieve trip details
+	if r.Method == "GET" {
+		// retrieve details if not available
+		result := IsPassengerAvail(db, passengerid)
+		if !result {
+			// TDL retrieve details using http.get
+
+			w.WriteHeader(http.StatusAccepted)
+			w.Write([]byte("202 - Passenger on trip"))
+		} else {
+			// passenger available
+			w.WriteHeader(http.StatusConflict)
+			w.Write([]byte("409 - Passenger not on trip"))
+		}
+	}
+
+	if r.Header.Get("Content-type") == "application/json" {
+		// updates availability of passenger when trip is successfully created in trip microservice
+		// this method is triggered automatically
+		if r.Method == "POST" {
+			res := strconv.FormatBool(!IsPassengerAvail(db, passengerid))
+			if UpdateAvailabilityDB(db, passengerid, res) {
+				w.WriteHeader(http.StatusAccepted)
+				w.Write([]byte("202 - Passenger availability updated"))
+			} else {
+				w.WriteHeader(http.StatusConflict)
+				w.Write([]byte("409 - Unable to update"))
+			}
+		}
+	}
+}
+
+func trips(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	passid := params["passengerid"]
+
+	// mysql init
+	db, err := sql.Open("mysql", "root:password@tcp(127.0.0.1:3306)/db_assignment1")
+
+	// handle db error
+	if err != nil {
+		panic(err.Error())
+	}
+
+	// defer the close till after main function has finished executing
+	defer db.Close()
+
+	// using GET to retrieve trip details
+	if r.Method == "GET" {
+		triparray := GetAllTrips(passid)
+		for _, t := range triparray {
+			json.NewEncoder(w).Encode(t)
+		}
+	}
+}
+
+// // function NOT IN USE
+// func GetTripDetails(id string) TripDetails {
+// 	url := "http://localhost:1000/passenger/" + id
+// 	var t TripDetails
+
+// 	if resp, err := http.Get(url); err == nil {
+// 		defer resp.Body.Close()
+
+// 		if body, err := ioutil.ReadAll(resp.Body); err == nil {
+// 			json.Unmarshal(body, &t)
+// 		} else {
+// 			log.Fatal(err)
+// 		}
+// 	} else {
+// 		log.Fatal(err)
+// 	}
+// 	return t
+// }
+
+func GetAllTrips(id string) []Trip {
+	url := "http://localhost:3000/trips/" + id
+	var t []Trip
+	if resp, err := http.Get(url); err == nil {
+		defer resp.Body.Close()
+
+		if body, err := ioutil.ReadAll(resp.Body); err == nil {
+			json.Unmarshal(body, &t)
+		} else {
+			log.Fatal(err)
+		}
+	} else {
+		log.Fatal(err)
+	}
+	return t
+}
+
 func InsertPassengerDB(db *sql.DB, PA PassengerAccount) {
 	fn := PA.Firstname
 	ln := PA.Lastname
@@ -158,6 +272,20 @@ func UpdatePassengerDB(db *sql.DB, PA PassengerAccount) bool {
 	}
 }
 
+func UpdateAvailabilityDB(db *sql.DB, id string, avail string) bool {
+	query := fmt.Sprintf(
+		`update passengers set Availability = %s 
+		 where PassengerID = UUID_TO_BIN('%s');`, avail, id)
+	res, err := db.Exec(query)
+
+	if err != nil {
+		panic(err.Error())
+	}
+
+	rows, _ := res.RowsAffected()
+	return rows == 1
+}
+
 // validation check which returns true if record already exists in database
 // returns false by default, true if passenger record exists
 func PassengerExist(db *sql.DB, mn string, ea string) bool {
@@ -182,7 +310,7 @@ func PassengerExist(db *sql.DB, mn string, ea string) bool {
 }
 
 // retrives passenger availability
-// returns bool based on availability
+// returns bool based on passengerid
 func IsPassengerAvail(db *sql.DB, id string) bool {
 	r := false
 	query := fmt.Sprintf(
@@ -217,9 +345,11 @@ func main() {
 
 	// start router
 	router := mux.NewRouter()
-	router.HandleFunc("/", home)
+	router.HandleFunc("/", landing)
 
 	router.HandleFunc("/passenger", passenger).Methods("POST", "PUT")
+	router.HandleFunc("/passenger/{passengerid}", home).Methods("GET", "POST")
+	router.HandleFunc("/passenger/{passengerid}/trips", trips).Methods("GET")
 
 	fmt.Println("listening at port 1000")
 	log.Fatal(http.ListenAndServe(":1000", router))
