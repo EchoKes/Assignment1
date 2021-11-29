@@ -122,6 +122,13 @@ func passenger(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		}
+
+		// using DELETE to delete
+		// in this case, delete function is not allowed
+		if r.Method == "DELETE" {
+			w.WriteHeader(http.StatusNotAcceptable)
+			w.Write([]byte("406 - Unable to delete"))
+		}
 	}
 }
 
@@ -354,3 +361,16 @@ func main() {
 	fmt.Println("listening at port 1000")
 	log.Fatal(http.ListenAndServe(":1000", router))
 }
+
+// VALIDATIONS (put a 'V' to those done)
+/*
+check passenger exist using their uuid:
+- in home "GET" "POST" function
+- in trips "GET" function
+
+check passenger availability
+
+check creation and update of account is successful in passenger function
+
+check if user has any trips in getalltrips
+*/

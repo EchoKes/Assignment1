@@ -383,3 +383,13 @@ func main() {
 	fmt.Println("listening at port 3000")
 	log.Fatal(http.ListenAndServe(":3000", router))
 }
+
+// VALIDATIONS (put a 'V' to those done)
+/*
+check driver availability
+
+check action is appropriate in tripStartEnd function
+
+check creation and update of trip is successful in requestTrip and tripStartEnd function
+
+*/

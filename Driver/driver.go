@@ -101,6 +101,13 @@ func driver(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		}
+
+		// using DELETE to delete
+		// in this case, delete function is not allowed
+		if r.Method == "DELETE" {
+			w.WriteHeader(http.StatusNotAcceptable)
+			w.Write([]byte("406 - Unable to delete"))
+		}
 	}
 }
 
@@ -323,3 +330,16 @@ func main() {
 	fmt.Println("listening at port 2000")
 	log.Fatal(http.ListenAndServe(":2000", router))
 }
+
+// VALIDATIONS (put a 'V' to those done)
+/*
+check driver exist using their uuid:
+- in home "GET" "POST" function
+- in trips "GET" function
+
+check driver availability
+
+check creation and update of account is successful in driver function
+
+check if any available drivers. none should set driver id as nil before returning
+*/
