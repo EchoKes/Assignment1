@@ -82,13 +82,16 @@ func passenger(w http.ResponseWriter, r *http.Request) {
 				json.Unmarshal(regBody, &newAcc)
 				// check if account already exist
 				if !PassengerExist(db, newAcc.Mobile, newAcc.Email) {
-					// TDL check if user input correct
-					InsertPassengerDB(db, newAcc)
-					w.WriteHeader(http.StatusCreated)
-					w.Write([]byte("201 - Passenger Account Created"))
+					if InsertPassengerDB(db, newAcc) {
+						w.WriteHeader(http.StatusCreated)
+						w.Write([]byte("201 - Passenger account created"))
+					} else {
+						w.WriteHeader(http.StatusBadRequest)
+						w.Write([]byte("400 - Unable to create account"))
+					}
 				} else {
 					w.WriteHeader(http.StatusConflict)
-					w.Write([]byte("409 - Account Already Exists!"))
+					w.Write([]byte("409 - Account already exists!"))
 				}
 
 			} else {
@@ -108,18 +111,27 @@ func passenger(w http.ResponseWriter, r *http.Request) {
 				// check if account already exist. if exist:update, else:create
 				// TDL separate function. one for checking existence thru id, the other from mobile and email
 				if PassengerExist(db, acc.Mobile, acc.Email) {
-					//TDL check if user input correct
 					// update account
-					UpdatePassengerDB(db, acc)
-					w.WriteHeader(http.StatusAccepted)
-					w.Write([]byte("202 - Passenger Account Updated"))
-
+					if UpdatePassengerDB(db, acc) {
+						w.WriteHeader(http.StatusAccepted)
+						w.Write([]byte("202 - Passenger account updated"))
+					} else {
+						w.WriteHeader(http.StatusBadRequest)
+						w.Write([]byte("400 - Unable to update account"))
+					}
 				} else {
 					// create account
-					InsertPassengerDB(db, acc)
-					w.WriteHeader(http.StatusCreated)
-					w.Write([]byte("201 - Passenger Account Created"))
+					if InsertPassengerDB(db, acc) {
+						w.WriteHeader(http.StatusCreated)
+						w.Write([]byte("201 - Passenger account created"))
+					} else {
+						w.WriteHeader(http.StatusBadRequest)
+						w.Write([]byte("400 - Unable to create account"))
+					}
 				}
+			} else {
+				w.WriteHeader(http.StatusUnprocessableEntity)
+				w.Write([]byte("422 - Please enter account details in JSON format"))
 			}
 		}
 
@@ -133,8 +145,6 @@ func passenger(w http.ResponseWriter, r *http.Request) {
 }
 
 func home(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "~ Welcome Passenger! ~")
-
 	params := mux.Vars(r)
 	passengerid := params["passengerid"]
 
@@ -152,10 +162,9 @@ func home(w http.ResponseWriter, r *http.Request) {
 	// using GET to retrieve trip details
 	if r.Method == "GET" {
 		// retrieve details if not available
-		result := IsPassengerAvail(db, passengerid)
+		result := GetPassengerAvail(db, passengerid)
 		if !result {
-			// TDL retrieve details using http.get
-
+			// TDL retrieve details
 			w.WriteHeader(http.StatusAccepted)
 			w.Write([]byte("202 - Passenger on trip"))
 		} else {
@@ -169,8 +178,9 @@ func home(w http.ResponseWriter, r *http.Request) {
 		// updates availability of passenger when trip is successfully created in trip microservice
 		// this method is triggered automatically
 		if r.Method == "POST" {
-			res := strconv.FormatBool(!IsPassengerAvail(db, passengerid))
+			res := strconv.FormatBool(!GetPassengerAvail(db, passengerid))
 			if UpdateAvailabilityDB(db, passengerid, res) {
+				// TDL might not require to write header and response
 				w.WriteHeader(http.StatusAccepted)
 				w.Write([]byte("202 - Passenger availability updated"))
 			} else {
@@ -198,10 +208,20 @@ func trips(w http.ResponseWriter, r *http.Request) {
 
 	// using GET to retrieve trip details
 	if r.Method == "GET" {
-		triparray := GetAllTrips(passid)
-		for _, t := range triparray {
-			json.NewEncoder(w).Encode(t)
+		// check that passenger is in database
+		// proceeds if true
+		if PassengerIdExist(db, passid) {
+			triparray := GetAllTrips(passid)
+			for _, t := range triparray {
+				json.NewEncoder(w).Encode(t)
+			}
+			w.WriteHeader(http.StatusAccepted)
+			w.Write([]byte("202 - Trips received"))
+		} else {
+			w.WriteHeader(http.StatusUnprocessableEntity)
+			w.Write([]byte("422 - PassengerID incorrect"))
 		}
+
 	}
 }
 
@@ -241,7 +261,7 @@ func GetAllTrips(id string) []Trip {
 	return t
 }
 
-func InsertPassengerDB(db *sql.DB, PA PassengerAccount) {
+func InsertPassengerDB(db *sql.DB, PA PassengerAccount) bool {
 	fn := PA.Firstname
 	ln := PA.Lastname
 	mn := PA.Mobile
@@ -251,11 +271,14 @@ func InsertPassengerDB(db *sql.DB, PA PassengerAccount) {
 		`insert into passengers() 
 		 values(UUID_TO_BIN(UUID()), '%s','%s','%s','%s', true)`,
 		fn, ln, mn, ea)
-	_, err := db.Query(query)
+	res, err := db.Exec(query)
 
 	if err != nil {
 		panic(err.Error())
 	}
+
+	rows, _ := res.RowsAffected()
+	return rows == 1
 }
 
 func UpdatePassengerDB(db *sql.DB, PA PassengerAccount) bool {
@@ -269,14 +292,14 @@ func UpdatePassengerDB(db *sql.DB, PA PassengerAccount) bool {
 		`update passengers set FirstName = '%s', LastName = '%s',
 		 MobileNo = '%s', EmailAddr = '%s' 
 		 where PassengerID = UUID_TO_BIN('%s');`, fn, ln, mn, ea, id)
-	_, err := db.Query(query)
+	res, err := db.Exec(query)
 
 	if err != nil {
 		panic(err.Error())
-
-	} else {
-		return true
 	}
+
+	rows, _ := res.RowsAffected()
+	return rows == 1
 }
 
 func UpdateAvailabilityDB(db *sql.DB, id string, avail string) bool {
@@ -316,9 +339,32 @@ func PassengerExist(db *sql.DB, mn string, ea string) bool {
 	return false
 }
 
+// validation check which returns true if record already exists in database
+// returns false by default, true if passenger record exists
+func PassengerIdExist(db *sql.DB, id string) bool {
+	query := fmt.Sprintf(
+		`select count(*) from passengers 
+		 where PassengerID = UUID_TO_BIN('%s')`, id)
+
+	results, err := db.Query(query)
+
+	if err != nil {
+		panic(err.Error())
+	}
+
+	if results.Next() {
+		var r int
+		results.Scan(&r)
+		if r > 0 {
+			return true
+		}
+	}
+	return false
+}
+
 // retrives passenger availability
 // returns bool based on passengerid
-func IsPassengerAvail(db *sql.DB, id string) bool {
+func GetPassengerAvail(db *sql.DB, id string) bool {
 	r := false
 	query := fmt.Sprintf(
 		`select Availability from passengers where 
@@ -353,7 +399,6 @@ func main() {
 	// start router
 	router := mux.NewRouter()
 	router.HandleFunc("/", landing)
-
 	router.HandleFunc("/passenger", passenger).Methods("POST", "PUT")
 	router.HandleFunc("/passenger/{passengerid}", home).Methods("GET", "POST")
 	router.HandleFunc("/passenger/{passengerid}/trips", trips).Methods("GET")
@@ -365,12 +410,12 @@ func main() {
 // VALIDATIONS (put a 'V' to those done)
 /*
 check passenger exist using their uuid:
-- in home "GET" "POST" function
-- in trips "GET" function
+- in home "GET" "POST" function (V)
+- in trips "GET" function		(V)
 
-check passenger availability
+check passenger availability	(V)
 
-check creation and update of account is successful in passenger function
+check creation and update of account is successful in passenger function (V)
 
 check if user has any trips in getalltrips
 */

@@ -66,6 +66,7 @@ func requestTrip(w http.ResponseWriter, r *http.Request) {
 	defer db.Close()
 
 	params := mux.Vars(r)
+	passid := params["passengerid"]
 
 	if r.Header.Get("Content-type") == "application/json" {
 		// POST method to insert trip row into db
@@ -75,28 +76,31 @@ func requestTrip(w http.ResponseWriter, r *http.Request) {
 
 			if err == nil {
 				json.Unmarshal(regBody, &trip)
-				trip.Passengerid = params["passengerid"]
-				driver := AvailDriver()
-				dID := driver.Driverid
+				trip.Passengerid = passid
+				driver := GetAvailDriver()
+				driverid := driver.Driverid
 				// check if there are available drivers
 				if driver.Driverid != "nil" {
 					// insert trip into db
-					trip.Driverid = dID
-					InsertTripDB(db, trip)
-					tripid := RetrieveTripID(db)
-					w.WriteHeader(http.StatusCreated)
-					w.Write([]byte("201 - Trip Created!"))
-					// update driver & passenger availability to false
-					// posts trip information to both parties
-					fmt.Println(tripid)
-					if tripid != "nil" {
-						// driver.Tripid = tripid
-						UpdatePassenger(params["passengerid"])
-						// var pass Passenger
-						// pass.Tripid = tripid
-						// pass.Passengerid = params["passenderid"]
-						UpdateDriver(dID)
+					trip.Driverid = driverid
+					if InsertTripDB(db, trip) {
+						w.WriteHeader(http.StatusCreated)
+						w.Write([]byte("201 - Trip created"))
+						// update driver & passenger availability to false
+						UpdatePassenger(passid)
+						UpdateDriver(driverid)
+					} else {
+						w.WriteHeader(http.StatusBadRequest)
+						w.Write([]byte("400 - Unable to create trip"))
 					}
+					// tripid := RetrieveTripID(db)
+					// if tripid != "nil" {
+					// 	// TDL posts trip information to both parties
+					// 	driver.Tripid = tripid
+					// 	var pass Passenger
+					// 	pass.Tripid = tripid
+					// 	pass.Passengerid = params["passenderid"]
+					// }
 				} else {
 					// no available driver
 					w.WriteHeader(http.StatusConflict)
@@ -137,13 +141,13 @@ func tripStartEnd(w http.ResponseWriter, r *http.Request) {
 				// insert tripstartdt into db
 				if InsertTripTime(db, tripid, "TripStartDT") {
 					w.WriteHeader(http.StatusAccepted)
-					w.Write([]byte("202 - Trip Start DateTime Stored"))
+					w.Write([]byte("202 - Trip start DateTime stored"))
 				}
 			case "end":
 				// insert tripenddt into db & update users' availability
 				if InsertTripTime(db, tripid, "TripEndDT") {
 					w.WriteHeader(http.StatusAccepted)
-					w.Write([]byte("202 - Trip End DateTime Stored"))
+					w.Write([]byte("202 - Trip end DateTime stored"))
 					UpdatePassenger(passid)
 					UpdateDriver(driverid)
 				}
@@ -179,7 +183,7 @@ func getPassengerTrips(w http.ResponseWriter, r *http.Request) {
 }
 
 // returns DriverID from driver microservice if there found, otherwise "nil".
-func AvailDriver() Driver {
+func GetAvailDriver() Driver {
 	url := "http://localhost:2000/availabledrivers"
 	var d Driver
 	if resp, err := http.Get(url); err == nil {
@@ -238,8 +242,8 @@ func UpdatePassenger(passengerid string) {
 }
 
 // db function to insert a trip row
-// returns tripid
-func InsertTripDB(db *sql.DB, trip Trip) {
+// returns true if insert is successful
+func InsertTripDB(db *sql.DB, trip Trip) bool {
 	pid := trip.Passengerid
 	did := trip.Driverid
 	puc := trip.Pickupcode
@@ -250,11 +254,14 @@ func InsertTripDB(db *sql.DB, trip Trip) {
 		 values(UUID_TO_BIN(UUID()), UUID_TO_BIN('%s'), UUID_TO_BIN('%s'),'%s','%s');`,
 		pid, did, puc, doc)
 
-	_, err := db.Exec(query)
+	res, err := db.Exec(query)
 
 	if err != nil {
 		panic(err.Error())
 	}
+
+	rows, _ := res.RowsAffected()
+	return rows == 1
 }
 
 // db function to retrieve tripid after insertion
@@ -360,19 +367,6 @@ func GetAllTrips(db *sql.DB, passid string) []Trip {
 }
 
 func main() {
-	// // mysql init
-	// db, err := sql.Open("mysql", "root:password@tcp(127.0.0.1:3306)/db_assignment1")
-
-	// // handle db error
-	// if err != nil {
-	// 	panic(err.Error())
-	// }
-
-	// //insert db test function below
-
-	// // defer the close till after main function has finished executing
-	// defer db.Close()
-
 	// start router
 	router := mux.NewRouter()
 	router.HandleFunc("/", home)
@@ -386,10 +380,10 @@ func main() {
 
 // VALIDATIONS (put a 'V' to those done)
 /*
-check driver availability
+check driver availability (V)
 
-check action is appropriate in tripStartEnd function
+check action is appropriate in tripStartEnd function (V)
 
-check creation and update of trip is successful in requestTrip and tripStartEnd function
+check creation of trip is successful in requestTrip function (V)
 
 */

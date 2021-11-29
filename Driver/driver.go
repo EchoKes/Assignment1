@@ -63,9 +63,13 @@ func driver(w http.ResponseWriter, r *http.Request) {
 				json.Unmarshal(regBody, &newAcc)
 				// check if account already exist
 				if !DriverExist(db, newAcc.IdNum) {
-					InsertDriverDB(db, newAcc)
-					w.WriteHeader(http.StatusCreated)
-					w.Write([]byte("201 - Driver Account Created"))
+					if InsertDriverDB(db, newAcc) {
+						w.WriteHeader(http.StatusCreated)
+						w.Write([]byte("201 - Driver Account Created"))
+					} else {
+						w.WriteHeader(http.StatusBadRequest)
+						w.Write([]byte("400 - Unable to create account"))
+					}
 				} else {
 					w.WriteHeader(http.StatusConflict)
 					w.Write([]byte("409 - Account Already Exists!"))
@@ -87,18 +91,27 @@ func driver(w http.ResponseWriter, r *http.Request) {
 				json.Unmarshal(regBody, &acc)
 				// check if account already exist. if exist:update, else:create
 				if DriverExist(db, acc.IdNum) {
-					//TDL check if user input correct
 					// update account
-					UpdatePassengerDB(db, acc)
-					w.WriteHeader(http.StatusAccepted)
-					w.Write([]byte("202 - Driver Account Updated"))
-
+					if UpdatePassengerDB(db, acc) {
+						w.WriteHeader(http.StatusAccepted)
+						w.Write([]byte("202 - Driver account updated"))
+					} else {
+						w.WriteHeader(http.StatusBadRequest)
+						w.Write([]byte("400 - Unable to update account"))
+					}
 				} else {
 					// create account
-					InsertDriverDB(db, acc)
-					w.WriteHeader(http.StatusCreated)
-					w.Write([]byte("201 - Driver Account Created"))
+					if InsertDriverDB(db, acc) {
+						w.WriteHeader(http.StatusCreated)
+						w.Write([]byte("201 - Driver account created"))
+					} else {
+						w.WriteHeader(http.StatusBadRequest)
+						w.Write([]byte("400 - Unable to create account"))
+					}
 				}
+			} else {
+				w.WriteHeader(http.StatusUnprocessableEntity)
+				w.Write([]byte("422 - Please enter account details in JSON format"))
 			}
 		}
 
@@ -128,8 +141,8 @@ func home(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == "GET" {
 		// if availability is false, driver has been assigned a trip
-		if !GetDriverStatus(db, driverid) {
-			// retrieve details if not available
+		if !GetDriverAvail(db, driverid) {
+			// TDL retrieve details
 			w.WriteHeader(http.StatusAccepted)
 			w.Write([]byte("202 - Driver on trip"))
 
@@ -144,7 +157,7 @@ func home(w http.ResponseWriter, r *http.Request) {
 		// updates availability of passenger when trip is successfully created in trip microservice
 		// this method is triggered automatically
 		if r.Method == "POST" {
-			res := strconv.FormatBool(!GetDriverStatus(db, driverid))
+			res := strconv.FormatBool(!GetDriverAvail(db, driverid))
 			if UpdateAvailabilityDB(db, driverid, res) {
 				w.WriteHeader(http.StatusAccepted)
 				w.Write([]byte("202 - Driver availability updated"))
@@ -171,14 +184,19 @@ func availDrivers(w http.ResponseWriter, r *http.Request) {
 
 	// using GET to retrieve a available driver
 	if r.Method == "GET" {
-		// check if there are available drivers
+		// sent regardless of avail or non avail
+		// validation to be done in trips microservice
 		driver := DriversAvail(db)
-		if driver.Driverid != "" {
-			json.NewEncoder(w).Encode(driver)
+		json.NewEncoder(w).Encode(driver)
+
+		// available drivers
+		if driver.Driverid != "nil" {
+			w.WriteHeader(http.StatusAccepted)
+			w.Write([]byte("202 - Driver found"))
 		} else {
 			// no available drivers
 			w.WriteHeader(http.StatusConflict)
-			w.Write([]byte("409 - nil Driver not found"))
+			w.Write([]byte("409 - Driver not found"))
 		}
 	}
 }
@@ -206,7 +224,7 @@ func DriverExist(db *sql.DB, idNum string) bool {
 	return false
 }
 
-func GetDriverStatus(db *sql.DB, driverid string) bool {
+func GetDriverAvail(db *sql.DB, driverid string) bool {
 	r := false
 	query := fmt.Sprintf(
 		`select Availability from drivers
@@ -223,7 +241,7 @@ func GetDriverStatus(db *sql.DB, driverid string) bool {
 	return r
 }
 
-func InsertDriverDB(db *sql.DB, DA DriverAccount) {
+func InsertDriverDB(db *sql.DB, DA DriverAccount) bool {
 	fn := DA.Firstname
 	ln := DA.Lastname
 	mn := DA.Mobile
@@ -236,11 +254,14 @@ func InsertDriverDB(db *sql.DB, DA DriverAccount) {
 		 values(UUID_TO_BIN(UUID()), '%s','%s','%s','%s','%s','%s', true)`,
 		fn, ln, mn, ea, idn, cln)
 
-	_, err := db.Query(query)
+	res, err := db.Exec(query)
 
 	if err != nil {
 		panic(err.Error())
 	}
+
+	rows, _ := res.RowsAffected()
+	return rows == 1
 }
 
 func UpdatePassengerDB(db *sql.DB, DA DriverAccount) bool {
@@ -255,14 +276,15 @@ func UpdatePassengerDB(db *sql.DB, DA DriverAccount) bool {
 		`update drivers set FirstName = '%s', LastName = '%s',
 		 MobileNo = '%s', EmailAddr = '%s', CarLicenseNum = '%s'  
 		 where DriverID = UUID_TO_BIN('%s');`, fn, ln, mn, ea, cln, id)
-	_, err := db.Query(query)
+
+	res, err := db.Exec(query)
 
 	if err != nil {
 		panic(err.Error())
-
-	} else {
-		return true
 	}
+
+	rows, _ := res.RowsAffected()
+	return rows == 1
 }
 
 func UpdateAvailabilityDB(db *sql.DB, id string, avail string) bool {
@@ -305,23 +327,8 @@ func DriversAvail(db *sql.DB) DriverAccount {
 }
 
 func main() {
-	// // mysql init
-	// db, err := sql.Open("mysql", "root:password@tcp(127.0.0.1:3306)/db_assignment1")
-
-	// // handle db error
-	// if err != nil {
-	// 	panic(err.Error())
-	// }
-
-	// //insert db test function below
-
-	// // defer the close till after main function has finished executing
-	// defer db.Close()
-
 	//start router
-
 	router := mux.NewRouter()
-
 	router.HandleFunc("/", landing)
 	router.HandleFunc("/driver", driver).Methods("POST", "PUT")
 	router.HandleFunc("/availabledrivers", availDrivers).Methods("GET")
@@ -334,12 +341,11 @@ func main() {
 // VALIDATIONS (put a 'V' to those done)
 /*
 check driver exist using their uuid:
-- in home "GET" "POST" function
-- in trips "GET" function
+- in home "GET" "POST" function (V)
 
-check driver availability
+check driver availability (V)
 
-check creation and update of account is successful in driver function
+check creation and update of account is successful in driver function (V)
 
-check if any available drivers. none should set driver id as nil before returning
+check if any available drivers. none should set driver id as nil before returning (V)
 */
