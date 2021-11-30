@@ -67,6 +67,8 @@ use db_assignment1;
 -- from Trips where PassengerID = UUID_TO_BIN("ce9da0d5-5054-11ec-8928-0433c219c4d5")
 -- order by TripStartDT desc
 
+#delete from passengers where PassengerID = UUID_TO_BIN("51c0ed64-51b7-11ec-86cb-049226daf8e1");
+#select BIN_TO_UUID(PassengerID) from passengers where Availability = 1;
 select * from passengers
 
 -- -- for updating passenger account

@@ -10,6 +10,7 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 )
 
@@ -369,13 +370,18 @@ func GetAllTrips(db *sql.DB, passid string) []Trip {
 func main() {
 	// start router
 	router := mux.NewRouter()
+	// specify allowed headers, methods, & origins to allow CORS
+	headers := handlers.AllowedHeaders([]string{"X-Requested-With", "Content-Type"})
+	origins := handlers.AllowedOrigins([]string{"*"})
+	methods := handlers.AllowedMethods([]string{"GET", "POST", "PUT", "DELETE"})
+
 	router.HandleFunc("/", home)
 	router.HandleFunc("/passenger/{passengerid}", requestTrip).Methods("POST")
 	router.HandleFunc("/trip/{driverid}", tripStartEnd).Methods("POST")
 	router.HandleFunc("/trips/{passengerid}", getPassengerTrips).Methods("GET")
 
 	fmt.Println("listening at port 3000")
-	log.Fatal(http.ListenAndServe(":3000", router))
+	log.Fatal(http.ListenAndServe(":3000", handlers.CORS(headers, origins, methods)(router)))
 }
 
 // VALIDATIONS (put a 'V' to those done)

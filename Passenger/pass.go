@@ -11,6 +11,7 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 )
 
@@ -83,6 +84,8 @@ func passenger(w http.ResponseWriter, r *http.Request) {
 				// check if account already exist
 				if !PassengerExist(db, newAcc.Mobile, newAcc.Email) {
 					if InsertPassengerDB(db, newAcc) {
+						fmt.Println("account added")
+						fmt.Println(newAcc)
 						w.WriteHeader(http.StatusCreated)
 						w.Write([]byte("201 - Passenger account created"))
 					} else {
@@ -398,13 +401,18 @@ func main() {
 
 	// start router
 	router := mux.NewRouter()
+	// specify allowed headers, methods, & origins to allow CORS
+	headers := handlers.AllowedHeaders([]string{"X-Requested-With", "Content-Type"})
+	origins := handlers.AllowedOrigins([]string{"*"})
+	methods := handlers.AllowedMethods([]string{"GET", "POST", "PUT", "DELETE"})
+
 	router.HandleFunc("/", landing)
 	router.HandleFunc("/passenger", passenger).Methods("POST", "PUT")
 	router.HandleFunc("/passenger/{passengerid}", home).Methods("GET", "POST")
 	router.HandleFunc("/passenger/{passengerid}/trips", trips).Methods("GET")
 
 	fmt.Println("listening at port 1000")
-	log.Fatal(http.ListenAndServe(":1000", router))
+	log.Fatal(http.ListenAndServe(":1000", handlers.CORS(headers, origins, methods)(router)))
 }
 
 // VALIDATIONS (put a 'V' to those done)

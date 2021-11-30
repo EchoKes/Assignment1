@@ -11,6 +11,7 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 )
 
@@ -329,13 +330,17 @@ func DriversAvail(db *sql.DB) DriverAccount {
 func main() {
 	//start router
 	router := mux.NewRouter()
+	// specify allowed headers, methods, & origins to allow CORS
+	headers := handlers.AllowedHeaders([]string{"X-Requested-With", "Content-Type"})
+	origins := handlers.AllowedOrigins([]string{"*"})
+	methods := handlers.AllowedMethods([]string{"GET", "POST", "PUT", "DELETE"})
 	router.HandleFunc("/", landing)
 	router.HandleFunc("/driver", driver).Methods("POST", "PUT")
 	router.HandleFunc("/availabledrivers", availDrivers).Methods("GET")
 	router.HandleFunc("/driver/{driverid}", home).Methods("GET", "POST")
 
 	fmt.Println("listening at port 2000")
-	log.Fatal(http.ListenAndServe(":2000", router))
+	log.Fatal(http.ListenAndServe(":2000", handlers.CORS(headers, origins, methods)(router)))
 }
 
 // VALIDATIONS (put a 'V' to those done)

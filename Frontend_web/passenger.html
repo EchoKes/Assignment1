@@ -30,26 +30,28 @@
 </body>
 
 <script>
+
+    // 
+    function postSuccess() {
+
+    }
+
     function onSubmit(form) {
         event.preventDefault();
         const data = new FormData(form);
-        const pass = Object.fromEntries(data.entries());
+        const pass = JSON.stringify(Object.fromEntries(data));
 
         //var data = JSON.stringify($(form).serializeArray());
 
         console.log(pass);
 
-        $.ajax({
-            type: "POST",
-            url: "http://localhost:1000/passenger",
-            cors: true,
-            headers: {
-                'Access-Control-Allow-Origin': "http://localhost:1000/passenger",
-            },
-            data: pass,
-            contentType: "application/json",
-            success: function () { console.log("It worked!") }
-        })
+        // $.ajax({
+        //     type: "POST",
+        //     url: "http://localhost:1000/passenger",
+        //     data: pass,
+        //     contentType: "application/json",
+        //     success: function () { console.log("It worked!") }
+        // })
 
         return false; //don't submit
 
