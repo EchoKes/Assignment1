@@ -57,7 +57,7 @@ func landing(w http.ResponseWriter, r *http.Request) {
 }
 
 func passenger(w http.ResponseWriter, r *http.Request) {
-	//fmt.Fprintf(w, "Create an account")
+	// fmt.Fprintf(w, "Create an account")
 
 	// mysql init
 	db, err := sql.Open("mysql", "root:password@tcp(127.0.0.1:3306)/db_assignment1")
@@ -83,6 +83,7 @@ func passenger(w http.ResponseWriter, r *http.Request) {
 				// check if account already exist
 				if !PassengerExist(db, newAcc.Mobile, newAcc.Email) {
 					if InsertPassengerDB(db, newAcc) {
+						fmt.Println(newAcc)
 						w.WriteHeader(http.StatusCreated)
 						w.Write([]byte("201 - Passenger account created"))
 					} else {
