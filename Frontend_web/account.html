@@ -1,0 +1,151 @@
+<!DOCTYPE HTML>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <title>App</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+    <!-- <link rel="stylesheet" href="css/app.css" /> -->
+</head>
+
+<body>
+    <div>
+        <button id="loginBtn">Sign In</button>
+        <button id="regBtn">Sign Up</button>
+    </div>
+    <div class="Login">
+        <h1>Sign In</h1>
+        <label for="mn">Mobile Number:</label>
+        <input type="text" id="mnumber" name="MobileNo" /> <br>
+
+        <label for="pradio">Passenger</label>
+        <input type="radio" id="pradio" name="uType" value="passenger" checked> <br>
+        <label for="dradio">Driver</label>
+        <input type="radio" id="dradio" name="uType" value="driver"> <br>
+
+        <button id="loginBtn" type="button">Log In</button>
+        <p id="loginErr"></p>
+    </div>
+
+    <div class="Register">
+        <h1>Create Account</h1>
+        <form class="create" onsubmit="CreateAccount(this)" autocomplete="off">
+            <label for="fn">First Name:</label>
+            <input type="text" id="fname" name="FirstName" /> <br>
+
+            <label for="ln">Last Name:</label>
+            <input type="text" id="lname" name="LastName" /> <br>
+
+            <label for="mn">Mobile Number:</label>
+            <input type="text" id="mnumber" name="MobileNo" /> <br>
+
+            <label for="ea">Email Address:</label>
+            <input type="text" id="eaddress" name="EmailAddr" /> <br>
+
+            <button type="submit">Register</button>
+        </form>
+        <p id="registerErr"></p>
+    </div>
+</body>
+
+<script>
+
+
+    function createAccount(form) {
+        event.preventDefault();
+        const data = new FormData(form);
+        const pass = JSON.stringify(Object.fromEntries(data));
+        console.log(pass);
+
+        postCreate(pass);
+
+        form.reset();
+        return false; //don't submit
+    }
+
+    function postCreate(jsonString) {
+        $.ajax({
+            type: "POST",
+            url: "http://localhost:1000/passenger",
+            data: jsonString,
+            contentType: "application/json",
+            success: function (response, textStatus) {
+                postSuccess(response, textStatus)
+            },
+            error: function (textStatus, errorThrown) {
+                postFailed(errorThrown, textStatus)
+            }
+        });
+    }
+
+    function postSuccess(res, status) {
+        $("#registerErr").text("");
+        $(".Register").hide();
+        $(".Login").show();
+        console.log("Passenger account created");
+        console.log(res);
+        console.log(status);
+    }
+
+    function postFailed(error, status) {
+        $("$registerErr").text("Account already exists!");
+        console.log(error);
+        console.log(status);
+    }
+
+
+
+    // logs in the user and redirects to passenger/driver page
+    function login() {
+        // get phone num
+        let mobile = $("#mnumber").val();
+        // get user type
+        let uType = $("#input[name='uType']:checked").val();
+
+        if (uType == "passenger") {
+            let url = "http://localhost:1000/passenger/" + mobile + "/id";
+        } else {
+            let url = "http://localhost:1000/driver/" + mobile + "/id";
+        }
+
+        $.ajax({
+            type: "GET",
+            url: url,
+            success: function (response, textStatus) {
+                loginSuccess(response, textStatus)
+            },
+            error: function (textStatus, errorThrown) {
+                loginFailed(errorThrown, textStatus)
+            }
+        });
+    }
+
+    // callback function if login success
+    function loginSuccess(res, status) {
+        $("#loginErr").text("");
+        console.log(res);
+        console.log(status);
+
+        var id = res;
+        localStorage.setItem('userid', userid);
+
+        if (uType == "passenger") {
+            window.location.replace("/passenger.html");
+        } else {
+            window.location.replace("/driver.html");
+        }
+    }
+
+    // error function if login failed
+    function postFailed(error, status) {
+        $("#loginErr").text("login failed! are you sure you have entered the correct phone number?");
+        console.log(error);
+        console.log(status);
+    }
+
+
+</script>
+
+</html>

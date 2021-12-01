@@ -5,81 +5,116 @@
     <meta charset="utf-8" />
     <title>App</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <script src="passenger.js"></script>
+
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
     <!-- <link rel="stylesheet" href="css/app.css" /> -->
 </head>
 
-<body>
-    <h1>Create Account</h1>
-    <form class="create" onsubmit='return onSubmit(this)'>
-        <label for="fn">First Name:</label>
-        <input type="text" id="fname" name="FirstName" /> <br>
+<body onload="CheckAvail">
 
-        <label for="ln">Last Name:</label>
-        <input type="text" id="lname" name="LastName" /> <br>
+    <div class="UpdateAcc">
+        <h1>Update Account</h1>
+        <form class="create" onsubmit="UpdateAccount(this)" autocomplete="off">
+            <label for="fn">First Name:</label>
+            <input type="text" id="fname" name="FirstName" /> <br>
 
-        <label for="mn">Mobile Number:</label>
-        <input type="text" id="mnumber" name="MobileNum" /> <br>
+            <label for="ln">Last Name:</label>
+            <input type="text" id="lname" name="LastName" /> <br>
 
-        <label for="ea">Email Address:</label>
-        <input type="text" id="eaddress" name="EmailAddr" /> <br>
+            <label for="mn">Mobile Number:</label>
+            <input type="text" id="mnumber" name="MobileNo" /> <br>
 
-        <button type="submit">Create</button>
-    </form>
+            <label for="ea">Email Address:</label>
+            <input type="text" id="eaddress" name="EmailAddr" /> <br>
+
+            <button type="submit">Register</button>
+        </form>
+        <p id="updateErr"></p>
+    </div>
+
+    <div class="ReqTrip">
+        <h1>Wanna go somewhere?</h1>
+        <p>Go on a ride!</p>
+        <form class="create" onsubmit='return reqTrip(this)' autocomplete="off>
+            <label for=" fn">Pick Up (postal code):</label>
+            <input type="text" id="pu" name="PickUpCode" /> <br>
+
+            <label for="ln">Drop Off (postal code):</label>
+            <input type="text" id="do" name="DropOffCode" /> <br>
+
+            <button type="submit">Request</button>
+        </form>
+
+        <div class="RequestResult">
+            <!-- populate div using jQuery and AJAX -->
+        </div>
+    </div>
+
 </body>
 
 <script>
 
-    // 
-    function postSuccess() {
-
+    function postSuccess(res, status) {
+        console.log("");
+        console.log(res);
+        console.log(status);
     }
 
-    function onSubmit(form) {
+    function postFailed(error, status) {
+        console.log("");
+        console.log(error);
+        console.log(status);
+    }
+
+    function putUpdate(jsonString) {
+        $.ajax({
+            type: "POST",
+            url: "http://localhost:1000/passenger",
+            data: jsonString,
+            contentType: "application/json",
+            success: function (response, textStatus) {
+                postSuccess(response, textStatus)
+            },
+            error: function (textStatus, errorThrown) {
+                postFailed(errorThrown, textStatus)
+            }
+        });
+    }
+
+    function createAccount(form) {
         event.preventDefault();
         const data = new FormData(form);
         const pass = JSON.stringify(Object.fromEntries(data));
-
-        //var data = JSON.stringify($(form).serializeArray());
-
         console.log(pass);
 
-        // $.ajax({
-        //     type: "POST",
-        //     url: "http://localhost:1000/passenger",
-        //     data: pass,
-        //     contentType: "application/json",
-        //     success: function () { console.log("It worked!") }
-        // })
+        postCreate(pass);
 
-        // fetch('http://localhost:1000/passenger', {
-        //     method: 'POST',
-        //     body: pass,
-        //     headers: {
-        //         'Content-Type': 'application/json',
-        //     },
-        //     credentials: 'include'
-        // })
-        //     .then(result => {
-        //         console.log('Success:', result);
-        //     })
-        //     .catch(error => {
-        //         console.error('Error:', error);
-        //     });
-
-        // fetch('http://localhost:1000')
-        //     .then(result => {
-        //         console.log('Success:', result);
-        //     })
-        //     .catch(error => {
-        //         console.error('Error:', error);
-        //     });
-
-
+        form.reset();
         return false; //don't submit
+    }
+
+    function getDetails() {
+        // for now, let passid be constant
+        const passId = ""
+    }
+
+
+
+    function getDetailsSuccess() {
+        // set update account form values 
+        $("#fname").val();
+        $("#lname").val();
+        $("#mnumber").val();
+        $("#eadress").val();
+    }
+
+    // runs when page is loaded
+    function CheckAvail() {
+
 
     }
+
+
 </script>
 
 </html>

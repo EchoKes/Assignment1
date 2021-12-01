@@ -227,6 +227,38 @@ func trips(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func login(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	mobile := params["mobile"]
+
+	// mysql init
+	db, err := sql.Open("mysql", "root:password@tcp(127.0.0.1:3306)/db_assignment1")
+
+	// handle db error
+	if err != nil {
+		panic(err.Error())
+	}
+
+	// defer the close till after main function has finished executing
+	defer db.Close()
+
+	// using GET to retrieve trip details
+	if r.Method == "GET" {
+		// check that passenger is in database
+		// proceeds if true
+		id := RetrievePassID(db, mobile)
+		if id != "nil" {
+			json.NewEncoder(w).Encode(id)
+			w.WriteHeader(http.StatusAccepted)
+			w.Write([]byte(id))
+		} else {
+			w.WriteHeader(http.StatusUnprocessableEntity)
+			w.Write([]byte("422 - Mobile number incorrect"))
+		}
+
+	}
+}
+
 // // function NOT IN USE
 // func GetTripDetails(id string) TripDetails {
 // 	url := "http://localhost:1000/passenger/" + id
@@ -261,6 +293,25 @@ func GetAllTrips(id string) []Trip {
 		log.Fatal(err)
 	}
 	return t
+}
+
+func RetrievePassID(db *sql.DB, mobile string) string {
+	id := "nil"
+	query := fmt.Sprintf(
+		`select BIN_TO_UUID(PassengerId) from passengers 
+		 where MobileNo = '%s';`, mobile)
+
+	res, err := db.Query(query)
+
+	if err != nil {
+		panic(err.Error())
+	}
+
+	if res.Next() {
+		res.Scan(&id)
+	}
+
+	return id
 }
 
 func InsertPassengerDB(db *sql.DB, PA PassengerAccount) bool {
@@ -409,6 +460,7 @@ func main() {
 	router.HandleFunc("/passenger", passenger).Methods("POST", "PUT")
 	router.HandleFunc("/passenger/{passengerid}", home).Methods("GET", "POST")
 	router.HandleFunc("/passenger/{passengerid}/trips", trips).Methods("GET")
+	router.HandleFunc("/passenger/{mobile}/id", login).Methods("GET")
 
 	fmt.Println("listening at port 1000")
 	log.Fatal(http.ListenAndServe(":1000", handlers.CORS(headers, origins, methods)(router)))
