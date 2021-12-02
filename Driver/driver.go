@@ -202,6 +202,57 @@ func availDrivers(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func login(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	mobile := params["mobile"]
+
+	// mysql init
+	db, err := sql.Open("mysql", "root:password@tcp(127.0.0.1:3306)/db_assignment1")
+
+	// handle db error
+	if err != nil {
+		panic(err.Error())
+	}
+
+	// defer the close till after main function has finished executing
+	defer db.Close()
+
+	// using GET to retrieve trip details
+	if r.Method == "GET" {
+		// check that passenger is in database
+		// proceeds if true
+		id := RetrieveDriverID(db, mobile)
+		if id != "nil" {
+			json.NewEncoder(w).Encode(id)
+			w.WriteHeader(http.StatusAccepted)
+			w.Write([]byte(id))
+		} else {
+			w.WriteHeader(http.StatusUnprocessableEntity)
+			w.Write([]byte("422 - Mobile number incorrect"))
+		}
+
+	}
+}
+
+func RetrieveDriverID(db *sql.DB, mobile string) string {
+	id := "nil"
+	query := fmt.Sprintf(
+		`select BIN_TO_UUID(DriverId) from drivers 
+		 where MobileNo = '%s';`, mobile)
+
+	res, err := db.Query(query)
+
+	if err != nil {
+		panic(err.Error())
+	}
+
+	if res.Next() {
+		res.Scan(&id)
+	}
+
+	return id
+}
+
 // validation check which returns true if record already exists in database
 // returns false by default, true if driver record exists
 func DriverExist(db *sql.DB, idNum string) bool {
@@ -338,6 +389,7 @@ func main() {
 	router.HandleFunc("/driver", driver).Methods("POST", "PUT")
 	router.HandleFunc("/availabledrivers", availDrivers).Methods("GET")
 	router.HandleFunc("/driver/{driverid}", home).Methods("GET", "POST")
+	router.HandleFunc("/passenger/{mobile}/id", login).Methods("GET")
 
 	fmt.Println("listening at port 2000")
 	log.Fatal(http.ListenAndServe(":2000", handlers.CORS(headers, origins, methods)(router)))

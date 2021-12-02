@@ -12,26 +12,32 @@
 
 <body>
     <div>
-        <button id="loginBtn">Sign In</button>
-        <button id="regBtn">Sign Up</button>
+        <button id="loginBtn">Login</button>
+        <button id="regBtn">Register</button>
     </div>
     <div class="Login">
         <h1>Sign In</h1>
         <label for="mn">Mobile Number:</label>
-        <input type="text" id="mnumber" name="MobileNo" /> <br>
+        <input type="text" id="loginmnumber" name="MobileNo" /> <br>
 
         <label for="pradio">Passenger</label>
         <input type="radio" id="pradio" name="uType" value="passenger" checked> <br>
         <label for="dradio">Driver</label>
         <input type="radio" id="dradio" name="uType" value="driver"> <br>
 
-        <button id="loginBtn" type="button">Log In</button>
-        <p id="loginErr"></p>
+        <button id="siBtn" type="button">Sign In</button>
+        <p id="siErr"></p>
     </div>
 
     <div class="Register">
         <h1>Create Account</h1>
-        <form class="create" onsubmit="CreateAccount(this)" autocomplete="off">
+
+        <label for="pradio">Passenger</label>
+        <input type="radio" id="pRadioReg" name="uTypeReg" value="passenger" checked> <br>
+        <label for="dradio">Driver</label>
+        <input type="radio" id="dRadioReg" name="uTypeReg" value="driver"> <br>
+
+        <form class="create" onsubmit="createAccount(this)" autocomplete="off">
             <label for="fn">First Name:</label>
             <input type="text" id="fname" name="FirstName" /> <br>
 
@@ -44,31 +50,135 @@
             <label for="ea">Email Address:</label>
             <input type="text" id="eaddress" name="EmailAddr" /> <br>
 
-            <button type="submit">Register</button>
+            <button id="suBtn" type="submit">Sign Up</button>
         </form>
-        <p id="registerErr"></p>
+        <p id="suErr"></p>
     </div>
 </body>
 
 <script>
 
+    $(document).ready(function () {
+        $(".Login").hide();
+        $(".Register").hide();
+    });
+
+    $("#loginBtn").click(function () {
+        $("#loginBtn").text("Login")
+        // show login form; hide register form
+        $(".Login").show();
+        $(".Register").hide();
+    });
+
+    $("#regBtn").click(function () {
+        $("#loginBtn").text("< Back")
+        $("#loginmnumber").val("")
+        // show register form; hide login form
+        $(".Login").hide();
+        $(".Register").show();
+    });
+
+    $('#siBtn').click(function () {
+        var utype = $('input[name="uType"]:checked').val();
+        console.log(utype);
+        var mn = $('#loginmnumber').val();
+        if (mn.length != 0) {
+            login(mn, utype);
+        }
+        else {
+            $('#siErr').text("Enter Mobile Number!")
+        }
+    });
+
+    // $("#pRadioReg").click(removeFields());
+    // $("#dRadioReg").click(addFields());
+
+    $('input[type=radio][name=uTypeReg]').change(function () {
+        var label1 = '<label class="remove" for="idn">ID Number:</label>';
+        var input1 = '<input class="remove" type = "text" id = "idnum" name = "IdNum" /> <br>';
+        var label2 = '<label class="remove" for="cln">Car License Number:</label>';
+        var input2 = '<input class="remove" type = "text" id = "carlicensenum" name = "CarLicenseNum" /> <br>';
+
+        if (this.value == 'driver') {
+            $(label1).insertBefore("#suBtn");
+            $(input1).insertBefore("#suBtn");
+            $(label2).insertBefore("#suBtn");
+            $(input2).insertBefore("#suBtn");
+        }
+        else {
+            var elem = document.getElementsByClassName("remove");
+            elem[0].remove();
+            // elem[1].remove();
+            // elem[2].remove();
+            // elem[3].remove();
+        }
+    });
+
+    // logs in the user and redirects to passenger/driver page
+    function login(mobile, utype) {
+
+        var url = "http://localhost:1000/passenger/" + mobile + "/id";
+        if (utype == "driver") {
+            url = "http://localhost:1000/driver/" + mobile + "/id";
+        }
+
+        $.ajax({
+            type: "GET",
+            url: url,
+            success: function (response, textStatus) {
+                loginSuccess(response, textStatus, utype)
+            },
+            error: function (textStatus, errorThrown, response) {
+                loginFailed(errorThrown, textStatus, response)
+            }
+        });
+    }
+
+    // callback function if login success
+    function loginSuccess(res, status, utype) {
+        $("#siErr").text("");
+        console.log(res);
+        console.log(status);
+
+        var id = res;
+        localStorage.setItem('userid', id);
+
+        if (utype == "passenger") {
+            window.location.href = "../Frontend_web/passenger.html";
+        } else {
+            window.location.href = "../Frontend_web/driver.html";
+        }
+    }
+
+    // error function if login failed
+    function loginFailed(error, status) {
+        if (status.status == 422) {
+            $("#siErr").text("login failed! are you sure you have entered the correct phone number?");
+        }
+
+        console.log(status);
+    }
+
 
     function createAccount(form) {
         event.preventDefault();
         const data = new FormData(form);
-        const pass = JSON.stringify(Object.fromEntries(data));
-        console.log(pass);
+        const jsonString = JSON.stringify(Object.fromEntries(data));
+        var utypereg = $('input[name="uTypeReg"]:checked').val();
 
-        postCreate(pass);
+        console.log(utypereg)
+        console.log(jsonString);
+
+        postCreate(jsonString, utypereg);
 
         form.reset();
         return false; //don't submit
     }
 
-    function postCreate(jsonString) {
+    function postCreate(jsonString, utypereg) {
         $.ajax({
             type: "POST",
-            url: "http://localhost:1000/passenger",
+            url: "http://localhost:1000/" + utypereg,
             data: jsonString,
             contentType: "application/json",
             success: function (response, textStatus) {
@@ -81,66 +191,16 @@
     }
 
     function postSuccess(res, status) {
-        $("#registerErr").text("");
-        $(".Register").hide();
+        $("#suErr").text("");
         $(".Login").show();
-        console.log("Passenger account created");
+        $(".Register").hide();
+        alert("Account created!");
         console.log(res);
         console.log(status);
     }
 
     function postFailed(error, status) {
-        $("$registerErr").text("Account already exists!");
-        console.log(error);
-        console.log(status);
-    }
-
-
-
-    // logs in the user and redirects to passenger/driver page
-    function login() {
-        // get phone num
-        let mobile = $("#mnumber").val();
-        // get user type
-        let uType = $("#input[name='uType']:checked").val();
-
-        if (uType == "passenger") {
-            let url = "http://localhost:1000/passenger/" + mobile + "/id";
-        } else {
-            let url = "http://localhost:1000/driver/" + mobile + "/id";
-        }
-
-        $.ajax({
-            type: "GET",
-            url: url,
-            success: function (response, textStatus) {
-                loginSuccess(response, textStatus)
-            },
-            error: function (textStatus, errorThrown) {
-                loginFailed(errorThrown, textStatus)
-            }
-        });
-    }
-
-    // callback function if login success
-    function loginSuccess(res, status) {
-        $("#loginErr").text("");
-        console.log(res);
-        console.log(status);
-
-        var id = res;
-        localStorage.setItem('userid', userid);
-
-        if (uType == "passenger") {
-            window.location.replace("/passenger.html");
-        } else {
-            window.location.replace("/driver.html");
-        }
-    }
-
-    // error function if login failed
-    function postFailed(error, status) {
-        $("#loginErr").text("login failed! are you sure you have entered the correct phone number?");
+        $("#suErr").text("Account already exists!");
         console.log(error);
         console.log(status);
     }
