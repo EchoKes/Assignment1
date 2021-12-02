@@ -113,6 +113,8 @@ func passenger(w http.ResponseWriter, r *http.Request) {
 				// check if account already exist. if exist:update, else:create
 				// TDL separate function. one for checking existence thru id, the other from mobile and email
 				if PassengerExist(db, acc.Mobile, acc.Email) {
+					passid := RetrievePassID(db, acc.Mobile)
+					acc.Passengerid = passid
 					// update account
 					if UpdatePassengerDB(db, acc) {
 						w.WriteHeader(http.StatusAccepted)
@@ -121,16 +123,17 @@ func passenger(w http.ResponseWriter, r *http.Request) {
 						w.WriteHeader(http.StatusBadRequest)
 						w.Write([]byte("400 - Unable to update account"))
 					}
-				} else {
-					// create account
-					if InsertPassengerDB(db, acc) {
-						w.WriteHeader(http.StatusCreated)
-						w.Write([]byte("201 - Passenger account created"))
-					} else {
-						w.WriteHeader(http.StatusBadRequest)
-						w.Write([]byte("400 - Unable to create account"))
-					}
 				}
+				// else {
+				// 	// create account
+				// 	if InsertPassengerDB(db, acc) {
+				// 		w.WriteHeader(http.StatusCreated)
+				// 		w.Write([]byte("201 - Passenger account created"))
+				// 	} else {
+				// 		w.WriteHeader(http.StatusBadRequest)
+				// 		w.Write([]byte("400 - Unable to create account"))
+				// 	}
+				// }
 			} else {
 				w.WriteHeader(http.StatusUnprocessableEntity)
 				w.Write([]byte("422 - Please enter account details in JSON format"))
@@ -175,6 +178,37 @@ func home(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte("409 - Passenger not on trip"))
 		}
 	}
+}
+
+func details(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	passengerid := params["passengerid"]
+
+	// mysql init
+	db, err := sql.Open("mysql", "root:password@tcp(127.0.0.1:3306)/db_assignment1")
+
+	// handle db error
+	if err != nil {
+		panic(err.Error())
+	}
+
+	// defer the close till after main function has finished executing
+	defer db.Close()
+
+	// using GET to retrieve trip details
+	if r.Method == "GET" {
+		// retrieve details if passenger exists
+		result := PassengerIdExist(db, passengerid)
+		if result {
+			pDetails := RetrievePassDetails(db, passengerid)
+			json.NewEncoder(w).Encode(pDetails)
+			w.WriteHeader(http.StatusAccepted)
+			w.Write([]byte("202 - Passenger details retrieved"))
+		} else {
+			w.WriteHeader(http.StatusConflict)
+			w.Write([]byte("409 - Unable to retrieve passenger details"))
+		}
+	}
 
 	if r.Header.Get("Content-type") == "application/json" {
 		// updates availability of passenger when trip is successfully created in trip microservice
@@ -214,9 +248,10 @@ func trips(w http.ResponseWriter, r *http.Request) {
 		// proceeds if true
 		if PassengerIdExist(db, passid) {
 			triparray := GetAllTrips(passid)
-			for _, t := range triparray {
-				json.NewEncoder(w).Encode(t)
-			}
+			// for _, t := range triparray {
+			// 	json.NewEncoder(w).Encode(t)
+			// }
+			json.NewEncoder(w).Encode(triparray)
 			w.WriteHeader(http.StatusAccepted)
 			w.Write([]byte("202 - Trips received"))
 		} else {
@@ -248,7 +283,7 @@ func login(w http.ResponseWriter, r *http.Request) {
 		// proceeds if true
 		id := RetrievePassID(db, mobile)
 		if id != "nil" {
-			json.NewEncoder(w).Encode(id)
+			//json.NewEncoder(w).Encode(id)
 			w.WriteHeader(http.StatusAccepted)
 			w.Write([]byte(id))
 		} else {
@@ -258,25 +293,6 @@ func login(w http.ResponseWriter, r *http.Request) {
 
 	}
 }
-
-// // function NOT IN USE
-// func GetTripDetails(id string) TripDetails {
-// 	url := "http://localhost:1000/passenger/" + id
-// 	var t TripDetails
-
-// 	if resp, err := http.Get(url); err == nil {
-// 		defer resp.Body.Close()
-
-// 		if body, err := ioutil.ReadAll(resp.Body); err == nil {
-// 			json.Unmarshal(body, &t)
-// 		} else {
-// 			log.Fatal(err)
-// 		}
-// 	} else {
-// 		log.Fatal(err)
-// 	}
-// 	return t
-// }
 
 func GetAllTrips(id string) []Trip {
 	url := "http://localhost:3000/trips/" + id
@@ -298,7 +314,7 @@ func GetAllTrips(id string) []Trip {
 func RetrievePassID(db *sql.DB, mobile string) string {
 	id := "nil"
 	query := fmt.Sprintf(
-		`select BIN_TO_UUID(PassengerId) from passengers 
+		`select BIN_TO_UUID(PassengerID) from passengers 
 		 where MobileNo = '%s';`, mobile)
 
 	res, err := db.Query(query)
@@ -435,6 +451,25 @@ func GetPassengerAvail(db *sql.DB, id string) bool {
 	return r
 }
 
+// retrieve passenger details
+func RetrievePassDetails(db *sql.DB, id string) PassengerAccount {
+	var pa PassengerAccount
+	query := fmt.Sprintf(
+		`select FirstName, LastName, MobileNo, EmailAddr from passengers 
+		 where PassengerID = UUID_TO_BIN('%s')`, id)
+
+	results, err := db.Query(query)
+
+	if err != nil {
+		panic(err.Error())
+	}
+
+	if results.Next() {
+		results.Scan(&pa.Firstname, &pa.Lastname, &pa.Mobile, &pa.Email)
+	}
+	return pa
+}
+
 func main() {
 	// // mysql init
 	// db, err := sql.Open("mysql", "root:password@tcp(127.0.0.1:3306)/db_assignment1")
@@ -457,9 +492,10 @@ func main() {
 	methods := handlers.AllowedMethods([]string{"GET", "POST", "PUT", "DELETE"})
 
 	router.HandleFunc("/", landing)
-	router.HandleFunc("/passenger", passenger).Methods("POST", "PUT")
-	router.HandleFunc("/passenger/{passengerid}", home).Methods("GET", "POST")
+	router.HandleFunc("/passenger", passenger).Methods("POST", "PUT", "DELETE")
+	router.HandleFunc("/passenger/{passengerid}", home).Methods("GET")
 	router.HandleFunc("/passenger/{passengerid}/trips", trips).Methods("GET")
+	router.HandleFunc("/passenger/{passengerid}/details", details).Methods("GET", "POST")
 	router.HandleFunc("/passenger/{mobile}/id", login).Methods("GET")
 
 	fmt.Println("listening at port 1000")

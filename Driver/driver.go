@@ -63,7 +63,7 @@ func driver(w http.ResponseWriter, r *http.Request) {
 				// convert JSON to obj
 				json.Unmarshal(regBody, &newAcc)
 				// check if account already exist
-				if !DriverExist(db, newAcc.IdNum) {
+				if !DriverExist(db, newAcc) {
 					if InsertDriverDB(db, newAcc) {
 						w.WriteHeader(http.StatusCreated)
 						w.Write([]byte("201 - Driver Account Created"))
@@ -91,7 +91,9 @@ func driver(w http.ResponseWriter, r *http.Request) {
 				// convert JSON to obj
 				json.Unmarshal(regBody, &acc)
 				// check if account already exist. if exist:update, else:create
-				if DriverExist(db, acc.IdNum) {
+				if DriverExist(db, acc) {
+					driverid := RetrieveDriverID(db, acc.Mobile)
+					acc.Driverid = driverid
 					// update account
 					if UpdatePassengerDB(db, acc) {
 						w.WriteHeader(http.StatusAccepted)
@@ -100,16 +102,17 @@ func driver(w http.ResponseWriter, r *http.Request) {
 						w.WriteHeader(http.StatusBadRequest)
 						w.Write([]byte("400 - Unable to update account"))
 					}
-				} else {
-					// create account
-					if InsertDriverDB(db, acc) {
-						w.WriteHeader(http.StatusCreated)
-						w.Write([]byte("201 - Driver account created"))
-					} else {
-						w.WriteHeader(http.StatusBadRequest)
-						w.Write([]byte("400 - Unable to create account"))
-					}
 				}
+				// else {
+				// 	// create account
+				// 	if InsertDriverDB(db, acc) {
+				// 		w.WriteHeader(http.StatusCreated)
+				// 		w.Write([]byte("201 - Driver account created"))
+				// 	} else {
+				// 		w.WriteHeader(http.StatusBadRequest)
+				// 		w.Write([]byte("400 - Unable to create account"))
+				// 	}
+				// }
 			} else {
 				w.WriteHeader(http.StatusUnprocessableEntity)
 				w.Write([]byte("422 - Please enter account details in JSON format"))
@@ -153,6 +156,37 @@ func home(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte("409 - Driver not assigned to a trip"))
 		}
 	}
+}
+
+func details(w http.ResponseWriter, r *http.Request) {
+	// mysql init
+	db, err := sql.Open("mysql", "root:password@tcp(127.0.0.1:3306)/db_assignment1")
+
+	// handle db error
+	if err != nil {
+		panic(err.Error())
+	}
+
+	// defer the close till after main function has finished executing
+	defer db.Close()
+
+	params := mux.Vars(r)
+	driverid := params["driverid"]
+
+	if r.Method == "GET" {
+		// retrieve details if driver exists
+		result := DriverIdExist(db, driverid)
+		if result {
+			dDetails := RetrieveDriverDetails(db, driverid)
+			json.NewEncoder(w).Encode(dDetails)
+			w.WriteHeader(http.StatusAccepted)
+			w.Write([]byte("202 - Driver details retrieved"))
+
+		} else {
+			w.WriteHeader(http.StatusConflict)
+			w.Write([]byte("409 - Unable to retrieve driver details"))
+		}
+	}
 
 	if r.Header.Get("Content-type") == "application/json" {
 		// updates availability of passenger when trip is successfully created in trip microservice
@@ -190,15 +224,15 @@ func availDrivers(w http.ResponseWriter, r *http.Request) {
 		driver := DriversAvail(db)
 		json.NewEncoder(w).Encode(driver)
 
-		// available drivers
-		if driver.Driverid != "nil" {
-			w.WriteHeader(http.StatusAccepted)
-			w.Write([]byte("202 - Driver found"))
-		} else {
-			// no available drivers
-			w.WriteHeader(http.StatusConflict)
-			w.Write([]byte("409 - Driver not found"))
-		}
+		// // available drivers
+		// if driver.Driverid != "nil" {
+		// 	w.WriteHeader(http.StatusAccepted)
+		// 	w.Write([]byte("202 - Driver found"))
+		// } else {
+		// 	// no available drivers
+		// 	w.WriteHeader(http.StatusConflict)
+		// 	w.Write([]byte("409 - Driver not found"))
+		// }
 	}
 }
 
@@ -223,7 +257,6 @@ func login(w http.ResponseWriter, r *http.Request) {
 		// proceeds if true
 		id := RetrieveDriverID(db, mobile)
 		if id != "nil" {
-			json.NewEncoder(w).Encode(id)
 			w.WriteHeader(http.StatusAccepted)
 			w.Write([]byte(id))
 		} else {
@@ -234,10 +267,29 @@ func login(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// retrieve driver details
+func RetrieveDriverDetails(db *sql.DB, id string) DriverAccount {
+	var da DriverAccount
+	query := fmt.Sprintf(
+		`select FirstName, LastName, MobileNo, EmailAddr, IdNum, CarLicenseNum
+		 from drivers where DriverID = UUID_TO_BIN('%s')`, id)
+
+	results, err := db.Query(query)
+
+	if err != nil {
+		panic(err.Error())
+	}
+
+	if results.Next() {
+		results.Scan(&da.Firstname, &da.Lastname, &da.Mobile, &da.Email, &da.IdNum, &da.Carlicensenum)
+	}
+	return da
+}
+
 func RetrieveDriverID(db *sql.DB, mobile string) string {
 	id := "nil"
 	query := fmt.Sprintf(
-		`select BIN_TO_UUID(DriverId) from drivers 
+		`select BIN_TO_UUID(DriverID) from drivers 
 		 where MobileNo = '%s';`, mobile)
 
 	res, err := db.Query(query)
@@ -255,10 +307,39 @@ func RetrieveDriverID(db *sql.DB, mobile string) string {
 
 // validation check which returns true if record already exists in database
 // returns false by default, true if driver record exists
-func DriverExist(db *sql.DB, idNum string) bool {
+func DriverIdExist(db *sql.DB, id string) bool {
 	query := fmt.Sprintf(
 		`select count(*) from drivers 
-		 where IdNum = '%s'`, idNum)
+		 where DriverID = UUID_TO_BIN('%s')`, id)
+
+	results, err := db.Query(query)
+
+	if err != nil {
+		panic(err.Error())
+	}
+
+	if results.Next() {
+		var r int
+		results.Scan(&r)
+		if r > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+// validation check which returns true if record already exists in database
+// returns false by default, true if driver record exists
+func DriverExist(db *sql.DB, acc DriverAccount) bool {
+	idn := acc.Driverid
+	mn := acc.Mobile
+	ea := acc.Email
+	cln := acc.Carlicensenum
+
+	query := fmt.Sprintf(
+		`select count(*) from drivers 
+		 where IdNum = '%s' or EmailAddr = '%s' 
+		 or MobileNo = '%s' or CarLicenseNum = '%s'`, idn, ea, mn, cln)
 
 	results, err := db.Query(query)
 
@@ -388,8 +469,9 @@ func main() {
 	router.HandleFunc("/", landing)
 	router.HandleFunc("/driver", driver).Methods("POST", "PUT")
 	router.HandleFunc("/availabledrivers", availDrivers).Methods("GET")
-	router.HandleFunc("/driver/{driverid}", home).Methods("GET", "POST")
-	router.HandleFunc("/passenger/{mobile}/id", login).Methods("GET")
+	router.HandleFunc("/driver/{driverid}", home).Methods("GET")
+	router.HandleFunc("/driver/{driverid}/details", details).Methods("GET", "POST")
+	router.HandleFunc("/driver/{mobile}/id", login).Methods("GET")
 
 	fmt.Println("listening at port 2000")
 	log.Fatal(http.ListenAndServe(":2000", handlers.CORS(headers, origins, methods)(router)))

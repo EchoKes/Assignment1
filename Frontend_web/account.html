@@ -16,7 +16,7 @@
         <button id="regBtn">Register</button>
     </div>
     <div class="Login">
-        <h1>Sign In</h1>
+        <h2>Sign In</h2>
         <label for="mn">Mobile Number:</label>
         <input type="text" id="loginmnumber" name="MobileNo" /> <br>
 
@@ -30,7 +30,7 @@
     </div>
 
     <div class="Register">
-        <h1>Create Account</h1>
+        <h2>Create Account</h2>
 
         <label for="pradio">Passenger</label>
         <input type="radio" id="pRadioReg" name="uTypeReg" value="passenger" checked> <br>
@@ -39,16 +39,16 @@
 
         <form class="create" onsubmit="createAccount(this)" autocomplete="off">
             <label for="fn">First Name:</label>
-            <input type="text" id="fname" name="FirstName" /> <br>
+            <input required type="text" id="fname" name="FirstName" /> <br>
 
             <label for="ln">Last Name:</label>
-            <input type="text" id="lname" name="LastName" /> <br>
+            <input required type="text" id="lname" name="LastName" /> <br>
 
             <label for="mn">Mobile Number:</label>
-            <input type="text" id="mnumber" name="MobileNo" /> <br>
+            <input required type="text" id="mnumber" name="MobileNo" /> <br>
 
             <label for="ea">Email Address:</label>
-            <input type="text" id="eaddress" name="EmailAddr" /> <br>
+            <input required type="text" id="eaddress" name="EmailAddr" /> <br>
 
             <button id="suBtn" type="submit">Sign Up</button>
         </form>
@@ -80,7 +80,6 @@
 
     $('#siBtn').click(function () {
         var utype = $('input[name="uType"]:checked').val();
-        console.log(utype);
         var mn = $('#loginmnumber').val();
         if (mn.length != 0) {
             login(mn, utype);
@@ -95,9 +94,9 @@
 
     $('input[type=radio][name=uTypeReg]').change(function () {
         var label1 = '<label class="remove" for="idn">ID Number:</label>';
-        var input1 = '<input class="remove" type = "text" id = "idnum" name = "IdNum" /> <br>';
-        var label2 = '<label class="remove" for="cln">Car License Number:</label>';
-        var input2 = '<input class="remove" type = "text" id = "carlicensenum" name = "CarLicenseNum" /> <br>';
+        var input1 = '<input required class="remove" type = "text" id = "idnum" name = "IdNum" /> <br>';
+        var label2 = '<label required class="remove" for="cln">Car License Number:</label>';
+        var input2 = '<input required class="remove" type = "text" id = "carlicensenum" name = "CarLicenseNum" /> <br>';
 
         if (this.value == 'driver') {
             $(label1).insertBefore("#suBtn");
@@ -106,11 +105,7 @@
             $(input2).insertBefore("#suBtn");
         }
         else {
-            var elem = document.getElementsByClassName("remove");
-            elem[0].remove();
-            // elem[1].remove();
-            // elem[2].remove();
-            // elem[3].remove();
+            $(".remove").remove();
         }
     });
 
@@ -119,7 +114,7 @@
 
         var url = "http://localhost:1000/passenger/" + mobile + "/id";
         if (utype == "driver") {
-            url = "http://localhost:1000/driver/" + mobile + "/id";
+            url = "http://localhost:2000/driver/" + mobile + "/id";
         }
 
         $.ajax({
@@ -137,11 +132,8 @@
     // callback function if login success
     function loginSuccess(res, status, utype) {
         $("#siErr").text("");
-        console.log(res);
-        console.log(status);
 
-        var id = res;
-        localStorage.setItem('userid', id);
+        localStorage.setItem('userid', res);
 
         if (utype == "passenger") {
             window.location.href = "../Frontend_web/passenger.html";
@@ -165,20 +157,22 @@
         const data = new FormData(form);
         const jsonString = JSON.stringify(Object.fromEntries(data));
         var utypereg = $('input[name="uTypeReg"]:checked').val();
-
-        console.log(utypereg)
+        var urlString = "http://localhost:1000/passenger";
+        if (utypereg == "driver") {
+            urlString = "http://localhost:2000/driver";
+        }
         console.log(jsonString);
 
-        postCreate(jsonString, utypereg);
+        postCreate(jsonString, urlString);
 
         form.reset();
         return false; //don't submit
     }
 
-    function postCreate(jsonString, utypereg) {
+    function postCreate(jsonString, urlString) {
         $.ajax({
             type: "POST",
-            url: "http://localhost:1000/" + utypereg,
+            url: urlString,
             data: jsonString,
             contentType: "application/json",
             success: function (response, textStatus) {

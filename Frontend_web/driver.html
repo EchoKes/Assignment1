@@ -1,0 +1,207 @@
+<!DOCTYPE HTML>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <title>App</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+    <!-- <link rel="stylesheet" href="css/app.css" /> -->
+</head>
+
+<body onload="CheckAvail();">
+    <h1 id="displayStatus"></h1>
+
+
+    <div class="StartTrip">
+        <button onclick="tripAction('start');" id="startBtn" value="start">Start Trip</button>
+        <button onclick="tripAction('end');" id="endBtn" value="end">End Trip</button>
+        <p id="tripDisplay"></p>
+    </div>
+
+    <div class="UpdateAcc">
+        <h2>Update Account</h2>
+        <form onsubmit="return putUpdate(this);" class="update" autocomplete="off">
+            <label for="fn">First Name:</label>
+            <input required type="text" id="fname" name="FirstName" /> <br>
+
+            <label for="ln">Last Name:</label>
+            <input required type="text" id="lname" name="LastName" /> <br>
+
+            <label for="mn">Mobile Number:</label>
+            <input required type="text" id="mnumber" name="MobileNo" /> <br>
+
+            <label for="ea">Email Address:</label>
+            <input required type="text" id="eaddress" name="EmailAddr" /> <br>
+
+            <label for="idn">ID Number:</label>
+            <input readonly type="text" id="idnum" name="IdNum" /> <br>
+
+            <label for="cln">Car License Number:</label>
+            <input required type="text" id="carlicensenum" name="CarLicenseNum" /> <br>
+
+            <button id="updateBtn" type="submit">Update</button>
+        </form>
+        <p id="updateErr"></p>
+    </div>
+</body>
+
+<script>
+    var id = localStorage.getItem('userid');
+    console.log(id);
+
+    // runs when page is loaded
+    function CheckAvail() {
+        getDetails();
+        var url = "http://localhost:2000/driver/" + id;
+
+        $.ajax({
+            type: "GET",
+            url: url,
+            dataType: "JSON",
+            success: function (response, textStatus) {
+                onTrip(response, textStatus);
+            },
+            error: function (textStatus, errorThrown) {
+                notOnTrip(errorThrown, textStatus);
+            }
+        });
+    }
+
+    // success callback function when CheckAvail function is ran successfully
+    // apparently this function does not get called
+    function onTrip(res, status) {
+        console.log(res);
+        console.log(status);
+    }
+
+    // error callback function when CheckAvail function is ran unsuccessfully
+    function notOnTrip(error, status) {
+        var rt = status.responseText;
+        console.log(rt);
+        var dispText = rt.substring(6, rt.length);
+
+        if (rt.includes("not")) {
+            $(".StartTrip").hide();
+            $(".EndTrip").hide();
+        }
+        else {
+            $(".StartTrip").show();
+            $(".EndTrip").show();
+        }
+
+        $("#displayStatus").css('color', 'blue');
+        $("#displayStatus").text(dispText);
+    }
+
+    // retrieves details of the driver account and populates input fields
+    function getDetails() {
+        var url = "http://localhost:2000/driver/" + id + "/details";
+
+        $.ajax({
+            type: "GET",
+            url: url,
+            success: function (response, textStatus) {
+                getDetailsSuccess(response, textStatus)
+            },
+            error: function (textStatus, errorThrown) {
+                getDetailsFail(errorThrown, textStatus)
+            }
+        });
+    }
+
+    function getDetailsSuccess(resp, status) {
+        //retrieve encoded json string
+        let posOfStatusCode = resp.indexOf("202 -");
+        let jsonString = resp.substring(0, posOfStatusCode);
+
+        let statusCode = resp.substring(posOfStatusCode, resp.length);
+        console.log(statusCode);
+        console.log(status);
+
+        values = JSON.parse(jsonString);
+        // set update account form values 
+        $("#fname").val(values.FirstName);
+        $("#lname").val(values.LastName);
+        $("#mnumber").val(values.MobileNo);
+        $("#eaddress").val(values.EmailAddr);
+        $("#idnum").val(values.IdNum);
+        $("#carlicensenum").val(values.CarLicenseNum);
+    }
+
+    function getDetailsFail(err, status) {
+        console.log(err);
+        console.log(status);
+    }
+
+    // updates passenger user account
+    function putUpdate(form) {
+        event.preventDefault();
+        let data = new FormData(form);
+        let jsonString = JSON.stringify(Object.fromEntries(data));
+
+        $.ajax({
+            type: "PUT",
+            url: "http://localhost:2000/driver",
+            contentType: "application/json",
+            data: jsonString,
+            success: function (response, textStatus) {
+                $("#updateErr").css('color', 'green');
+                $("#updateErr").text("Account has been updated.");
+                putSuccess(response, textStatus);
+            },
+            error: function (textStatus, errorThrown) {
+                putFailed(errorThrown, textStatus);
+            }
+        });
+
+        // form.reset();
+        return false; //don't submit
+    }
+
+    // success callback function when putUpdate function is ran successfully
+    function putSuccess(res, status) {
+        console.log(res);
+        console.log(status);
+    }
+
+    // error callback function when putUpdate function is ran unsuccessfully
+    function putFailed(error, status) {
+        var rt = status.responseText;
+        console.log(rt);
+        if (status.status == "400") {
+            $("#updateErr").css('color', 'red');
+            $("#updateErr").text("Unable to update. An account with the one or more of the details entered already exists.");
+        }
+    }
+
+    // starts the trip and inserts start datetime into database
+    function tripAction(act) {
+        $.ajax({
+            type: "POST",
+            url: "http://localhost:3000/trip/" + id + "?action=" + act,
+            contentType: "application/json",
+            success: function (response, textStatus) {
+                console.log(response);
+                $("#tripDisplay").css('color', 'green');
+                if (response.includes("start")) {
+                    $("#tripDisplay").text("Trip started!");
+                    $("#startBtn").hide();
+                }
+                else {
+                    $("#tripDisplay").text("Trip ended!");
+                    $("#endBtn").hide();
+                }
+
+            },
+            error: function (textStatus, errorThrown) {
+                console.log(textStatus);
+                $("#tripDisplay").css('color', 'red');
+                $("#tripDisplay").text(textStatus);
+            }
+        });
+    }
+
+</script>
+
+</html>

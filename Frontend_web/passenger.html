@@ -8,110 +8,282 @@
 
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
     <!-- <link rel="stylesheet" href="css/app.css" /> -->
+    <style>
+        th,
+        td {
+            font: 14px Verdana;
+        }
+
+        table,
+        th,
+        td {
+            border: solid 1px #DDD;
+            border-collapse: collapse;
+            padding: 2px 3px;
+            text-align: center;
+        }
+
+        th {
+            font-weight: bold;
+        }
+    </style>
 </head>
 
-<body onload="CheckAvail">
+<body onload="CheckAvail();">
+    <h1 id="displayStatus"></h1>
 
     <div class="UpdateAcc">
-        <h1>Update Account</h1>
-        <form class="create" onsubmit="UpdateAccount(this)" autocomplete="off">
+        <h2>Update Account</h2>
+        <form onsubmit="return putUpdate(this);" class="update" autocomplete="off">
             <label for="fn">First Name:</label>
-            <input type="text" id="fname" name="FirstName" /> <br>
+            <input required type="text" id="fname" name="FirstName" /> <br>
 
             <label for="ln">Last Name:</label>
-            <input type="text" id="lname" name="LastName" /> <br>
+            <input required type="text" id="lname" name="LastName" /> <br>
 
             <label for="mn">Mobile Number:</label>
-            <input type="text" id="mnumber" name="MobileNo" /> <br>
+            <input required type="text" id="mnumber" name="MobileNo" /> <br>
 
             <label for="ea">Email Address:</label>
-            <input type="text" id="eaddress" name="EmailAddr" /> <br>
+            <input required type="text" id="eaddress" name="EmailAddr" /> <br>
 
-            <button type="submit">Register</button>
+            <button id="updateBtn" type="submit">Update</button>
         </form>
         <p id="updateErr"></p>
     </div>
 
-    <div class="ReqTrip">
-        <h1>Wanna go somewhere?</h1>
+    <div class="ViewTrips">
+        <h2>View All Trips Taken</h2>
+        <input type="button" onclick="ViewTrips()" value="View">
+        <p id="viewErr"></p>
+    </div>
+    <div id="showTrips">
+    </div>
+
+    <div class="ReqTrip" id="rt">
+        <h2>Wanna go somewhere?</h2>
         <p>Go on a ride!</p>
         <form class="create" onsubmit='return reqTrip(this)' autocomplete="off>
             <label for=" fn">Pick Up (postal code):</label>
-            <input type="text" id="pu" name="PickUpCode" /> <br>
+            <input required type="text" id="pu" name="PickUpCode" /> <br>
 
             <label for="ln">Drop Off (postal code):</label>
-            <input type="text" id="do" name="DropOffCode" /> <br>
+            <input required type="text" id="do" name="DropOffCode" /> <br>
 
             <button type="submit">Request</button>
+            <p id="reqErr"></p>
         </form>
-
-        <div class="RequestResult">
-            <!-- populate div using jQuery and AJAX -->
-        </div>
     </div>
 
 </body>
 
 <script>
+    var id = localStorage.getItem('userid');
 
-    function postSuccess(res, status) {
-        console.log("");
-        console.log(res);
-        console.log(status);
-    }
+    // runs when page is loaded
+    function CheckAvail() {
+        getDetails();
+        var url = "http://localhost:1000/passenger/" + id;
 
-    function postFailed(error, status) {
-        console.log("");
-        console.log(error);
-        console.log(status);
-    }
-
-    function putUpdate(jsonString) {
         $.ajax({
-            type: "POST",
-            url: "http://localhost:1000/passenger",
-            data: jsonString,
-            contentType: "application/json",
+            type: "GET",
+            url: url,
+            dataType: "JSON",
             success: function (response, textStatus) {
-                postSuccess(response, textStatus)
+                onTrip(response, textStatus);
             },
             error: function (textStatus, errorThrown) {
-                postFailed(errorThrown, textStatus)
+                notOnTrip(errorThrown, textStatus);
             }
         });
     }
 
-    function createAccount(form) {
+    // success callback function when CheckAvail function is ran successfully
+    // apparently this function does not get called
+    function onTrip(res, status) {
+        console.log(res);
+        console.log(status);
+    }
+
+    // error callback function when CheckAvail function is ran unsuccessfully
+    function notOnTrip(error, status) {
+        var rt = status.responseText;
+        console.log(rt);
+        var dispText = rt.substring(6, rt.length);
+
+        if (rt.includes("not")) {
+            $(".ReqTrip").show();
+        }
+        else {
+            $(".ReqTrip").hide();
+        }
+
+        $("#displayStatus").css('color', 'blue');
+        $("#displayStatus").text(dispText);
+    }
+
+    // get passenger data
+    function getDetails() {
+        var url = "http://localhost:1000/passenger/" + id + "/details";
+
+        $.ajax({
+            type: "GET",
+            url: url,
+            success: function (response, textStatus) {
+                getDetailsSuccess(response, textStatus)
+            },
+            error: function (textStatus, errorThrown) {
+                getDetailsFail(errorThrown, textStatus)
+            }
+        });
+    }
+
+    function getDetailsSuccess(resp, status) {
+        //retrieve encoded json string
+        let posOfStatusCode = resp.indexOf("202 -");
+        let jsonString = resp.substring(0, posOfStatusCode);
+
+        let statusCode = resp.substring(posOfStatusCode, resp.length);
+        console.log(statusCode);
+        console.log(status);
+
+        values = JSON.parse(jsonString);
+        // set update account form values 
+        $("#fname").val(values.FirstName);
+        $("#lname").val(values.LastName);
+        $("#mnumber").val(values.MobileNo);
+        $("#eaddress").val(values.EmailAddr);
+    }
+
+    function getDetailsFail(err, status) {
+        console.log(err);
+        console.log(status);
+    }
+
+    // updates passenger user account
+    function putUpdate(form) {
         event.preventDefault();
-        const data = new FormData(form);
-        const pass = JSON.stringify(Object.fromEntries(data));
-        console.log(pass);
+        let data = new FormData(form);
+        let jsonString = JSON.stringify(Object.fromEntries(data));
 
-        postCreate(pass);
+        $.ajax({
+            type: "PUT",
+            url: "http://localhost:1000/passenger",
+            contentType: "application/json",
+            data: jsonString,
+            success: function (response, textStatus) {
+                $("#updateErr").css('color', 'green');
+                $("#updateErr").text("Account has been updated.");
+                putSuccess(response, textStatus);
+            },
+            error: function (textStatus, errorThrown) {
+                putFailed(errorThrown, textStatus);
+            }
+        });
 
-        form.reset();
+        // form.reset();
         return false; //don't submit
     }
 
-    function getDetails() {
-        // for now, let passid be constant
-        const passId = ""
+    // success callback function when putUpdate function is ran successfully
+    function putSuccess(res, status) {
+        console.log(res);
+        console.log(status);
     }
 
-
-
-    function getDetailsSuccess() {
-        // set update account form values 
-        $("#fname").val();
-        $("#lname").val();
-        $("#mnumber").val();
-        $("#eadress").val();
+    // error callback function when putUpdate function is ran unsuccessfully
+    function putFailed(error, status) {
+        var rt = status.responseText;
+        console.log(rt);
+        if (status.status == "400") {
+            $("#updateErr").css('color', 'red');
+            $("#updateErr").text("Unable to update. An account with the one or more of the details entered already exists.");
+        }
     }
 
-    // runs when page is loaded
-    function CheckAvail() {
+    // requests trip 
+    function reqTrip(form) {
+        event.preventDefault();
+        let data = new FormData(form);
+        let jsonString = JSON.stringify(Object.fromEntries(data));
 
+        $.ajax({
+            type: "POST",
+            url: "http://localhost:3000/passenger/" + id,
+            contentType: "application/json",
+            data: jsonString,
+            success: function (response, textStatus) {
+                reqSuccess(response, textStatus);
+            },
+            error: function (textStatus, errorThrown) {
+                reqFailed(errorThrown, textStatus);
+            }
+        });
 
+        // form.reset();
+        return false; //don't submit
+    }
+
+    // success callback function when reqTrip function is ran successfully
+    function reqSuccess(res, status) {
+        console.log(res);
+        console.log(status);
+        $("#reqErr").css('color', 'green');
+        $("#reqErr").text("Trip request successful!");
+    }
+
+    // error callback function when reqTrip function is ran unsuccessfully
+    function reqFailed(error, status) {
+        var rt = status.responseText;
+        console.log(rt);
+        if (status.status == "409") {
+            $("#reqErr").css('color', 'red');
+            $("#reqErr").text("No available drivers at the moment.. Try again later.");
+        }
+    }
+
+    // retrieves array of trip objects and displays in table format
+    function ViewTrips() {
+        // get array of trips
+        var url = "http://localhost:1000/passenger/" + id + "/trips";
+
+        $.ajax({
+            type: "GET",
+            url: url,
+            success: function (response, textStatus) {
+                viewSuccess(response, textStatus)
+            }
+        });
+    }
+
+    // success callback function when ViewTrips function is ran successfully
+    function viewSuccess(resp, status) {
+        let pos = resp.indexOf("202 -");
+        let rowsi = resp.substring(0, pos);
+        rows = JSON.parse(rowsi);
+        if (rows == null) {
+            $("#viewErr").css('color', 'blue');
+            $("#viewErr").text("You have not taken any trips yet.");
+        }
+        else {
+            rows = JSON.parse(rowsi);
+
+            var html = '<table>';
+            html += '<tr>';
+            for (var j in rows[0]) {
+                html += '<th>' + j + '</th>';
+            }
+            html += '</tr>';
+            for (var i = 0; i < rows.length; i++) {
+                html += '<tr>';
+                for (var j in rows[i]) {
+                    html += '<td>' + rows[i][j] + '</td>';
+                }
+                html += '</tr>';
+            }
+            html += '</table>';
+            document.getElementById('showTrips').innerHTML = html;
+        }
     }
 
 

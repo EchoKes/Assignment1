@@ -79,17 +79,19 @@ func requestTrip(w http.ResponseWriter, r *http.Request) {
 				json.Unmarshal(regBody, &trip)
 				trip.Passengerid = passid
 				driver := GetAvailDriver()
+				fmt.Println(driver)
 				driverid := driver.Driverid
 				// check if there are available drivers
 				if driver.Driverid != "nil" {
 					// insert trip into db
 					trip.Driverid = driverid
 					if InsertTripDB(db, trip) {
-						w.WriteHeader(http.StatusCreated)
-						w.Write([]byte("201 - Trip created"))
 						// update driver & passenger availability to false
 						UpdatePassenger(passid)
 						UpdateDriver(driverid)
+						w.WriteHeader(http.StatusCreated)
+						w.Write([]byte("201 - Trip created"))
+
 					} else {
 						w.WriteHeader(http.StatusBadRequest)
 						w.Write([]byte("400 - Unable to create trip"))
@@ -147,10 +149,10 @@ func tripStartEnd(w http.ResponseWriter, r *http.Request) {
 			case "end":
 				// insert tripenddt into db & update users' availability
 				if InsertTripTime(db, tripid, "TripEndDT") {
-					w.WriteHeader(http.StatusAccepted)
-					w.Write([]byte("202 - Trip end DateTime stored"))
 					UpdatePassenger(passid)
 					UpdateDriver(driverid)
+					w.WriteHeader(http.StatusAccepted)
+					w.Write([]byte("202 - Trip end DateTime stored"))
 				}
 			default:
 				// error of unknown action parsed in
@@ -192,6 +194,7 @@ func GetAvailDriver() Driver {
 
 		if body, err := ioutil.ReadAll(resp.Body); err == nil {
 			json.Unmarshal(body, &d)
+
 		} else {
 			log.Fatal(err)
 		}
@@ -201,28 +204,29 @@ func GetAvailDriver() Driver {
 	return d
 }
 
-// returns details of passenger from driver microservice using id
-func PassengerDetails(id string) Passenger {
-	url := "http://localhost:1000/passenger/details/" + id
-	var p Passenger
-	if resp, err := http.Get(url); err == nil {
-		defer resp.Body.Close()
+// // not in used
+// // returns details of passenger from driver microservice using id
+// func PassengerDetails(id string) Passenger {
+// 	url := "http://localhost:1000/passenger/details/" + id
+// 	var p Passenger
+// 	if resp, err := http.Get(url); err == nil {
+// 		defer resp.Body.Close()
 
-		if body, err := ioutil.ReadAll(resp.Body); err == nil {
-			json.Unmarshal(body, &p)
-		} else {
-			log.Fatal(err)
-		}
-	} else {
-		log.Fatal(err)
-	}
+// 		if body, err := ioutil.ReadAll(resp.Body); err == nil {
+// 			json.Unmarshal(body, &p)
+// 		} else {
+// 			log.Fatal(err)
+// 		}
+// 	} else {
+// 		log.Fatal(err)
+// 	}
 
-	return p
-}
+// 	return p
+// }
 
 // post it to driver microservice to update availability
 func UpdateDriver(driverid string) {
-	url := fmt.Sprintf("http://localhost:2000/driver/%s", driverid)
+	url := fmt.Sprintf("http://localhost:2000/driver/%s/details", driverid)
 	response, err := http.Post(url, "application/json", nil)
 	if err != nil {
 		data, _ := ioutil.ReadAll(response.Body)
@@ -233,7 +237,7 @@ func UpdateDriver(driverid string) {
 
 // post it to passenger microservice to update availability
 func UpdatePassenger(passengerid string) {
-	url := fmt.Sprintf("http://localhost:1000/passenger/%s", passengerid)
+	url := fmt.Sprintf("http://localhost:1000/passenger/%s/details", passengerid)
 	response, err := http.Post(url, "application/json", nil)
 	if err != nil {
 		data, _ := ioutil.ReadAll(response.Body)
