@@ -145,7 +145,7 @@ Project Link: [https://github.com/EchoKes/Assignment1](https://github.com/EchoKe
 
 <!-- MARKDOWN LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
-[account-screenshot1]: ./login.png
-[account-screenshot2]: ../images/register_driver.png
-[passenger-screenshot]: ../images/viewtrips.png
-[driver-screenshot]: /images/driverpage.png
+[account-screenshot1]: ./images/login.png
+[account-screenshot2]: ./images/register_driver.png
+[passenger-screenshot]: ./images/viewtrips.png
+[driver-screenshot]: ./images/driverpage.png
