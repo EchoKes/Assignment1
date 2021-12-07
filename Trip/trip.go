@@ -86,11 +86,12 @@ func requestTrip(w http.ResponseWriter, r *http.Request) {
 					// insert trip into db
 					trip.Driverid = driverid
 					if InsertTripDB(db, trip) {
+						json.NewEncoder(w).Encode("Assigned Driver: " + driver.Firstname + " " + driver.Lastname)
 						// update driver & passenger availability to false
 						UpdatePassenger(passid)
 						UpdateDriver(driverid)
 						w.WriteHeader(http.StatusCreated)
-						w.Write([]byte("201 - Trip created"))
+						w.Write([]byte("\n201 - Trip created"))
 
 					} else {
 						w.WriteHeader(http.StatusBadRequest)

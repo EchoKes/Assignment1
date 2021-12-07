@@ -72,6 +72,7 @@
 
             <button type="submit">Request</button>
             <p id="reqErr"></p>
+            <p id="dispDriver"></p>
         </form>
     </div>
 
@@ -228,8 +229,11 @@
     function reqSuccess(res, status) {
         console.log(res);
         console.log(status);
+        var driverText = res.split('\n');
         $("#reqErr").css('color', 'green');
         $("#reqErr").text("Trip request successful!");
+        $("#dispDriver").css('color', 'green');
+        $("#dispDriver").text(driverText[0]);
     }
 
     // error callback function when reqTrip function is ran unsuccessfully
