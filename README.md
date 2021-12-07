@@ -27,17 +27,20 @@
 
 Account page for sign up and sign in.
 
-[![Account_Screen_Shot][account-screenshot1]]
-
-[![Account_Screen_Shot][account-screenshot2]]
+![Account_Screen_Shot][account-screenshot1]
+---
+![Account_Screen_Shot][account-screenshot2]
+---
 
 Passenger page for getting current status, viewing trips and requesting for trips.
 
-[![Passenger_Screen_Shot][passenger-screenshot]]
+![Passenger_Screen_Shot][passenger-screenshot]
+---
 
 Driver page for getting current status, starting and ending ride.
 
-[![Driver_Screen_Shot][driver-screenshot]]
+![Driver_Screen_Shot][driver-screenshot]
+---
 
 This assignment's requirements are to create 2 or more microservices which will be ran in the background while a frontend such as website can be used to interact with the functions in the microservices. 
 
