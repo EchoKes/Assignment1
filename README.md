@@ -135,7 +135,7 @@ Distributed under the MIT License. See `LICENSE.txt` for more information.
 <!-- CONTACT -->
 ## Contact
 
-Kester Yeo - [School Email](s10185261@connect.np.edu.sg)
+Kester Yeo - [School Email] - s10185261@connect.np.edu.sg
 
 Project Link: [https://github.com/EchoKes/Assignment1](https://github.com/EchoKes/Assignment1)
 
