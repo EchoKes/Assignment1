@@ -42,9 +42,9 @@ create table Trips
     TripEndDT datetime
 );
 
--- -- (for creating trigger that runs on every insert into trips table)
+-- -- (for creating trigger that runs on every insert into trips table) : currently not in use as unnecessary
 
-create trigger uuid_getter
-after insert on trips
-for each row
-set @uuid = new.TripID;
+-- create trigger uuid_getter
+-- after insert on trips
+-- for each row
+-- set @uuid = new.TripID;
