@@ -47,8 +47,8 @@ This assignment's requirements are to create 2 or more microservices which will 
 There are a total of 3 microservices:
 (the functions will be shown in each microservice.)
 1. Passenger
-  * Log in
-  * View all trips (in reverse chronological order) 
+...* Log in
+...* View all trips (in reverse chronological order) 
 2. Trip
   * Updates users status
   * Request trip (passenger)
