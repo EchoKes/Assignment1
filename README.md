@@ -26,7 +26,8 @@
 ## About The Project
 
 Account page for sign up and sign in.
-[![Account_Screen_Shot][account-screenshot]]
+[![Account_Screen_Shot][account-screenshot1]]
+[![Account_Screen_Shot][account-screenshot2]]
 
 Passenger page for getting current status, viewing trips and requesting for trips.
 [![Passenger_Screen_Shot][passenger-screenshot]]
@@ -144,6 +145,7 @@ Project Link: [https://github.com/EchoKes/Assignment1](https://github.com/EchoKe
 
 <!-- MARKDOWN LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
-[account-screenshot]: images/account.png
-[passenger-screenshot]: images/passenger.png
-[driver-screenshot]: images/driver.png
+[account-screenshot1]: images/login.png
+[account-screenshot2]: images/register_driver.png
+[passenger-screenshot]: images/viewtrips.png
+[driver-screenshot]: images/driverpage.png
