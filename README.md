@@ -53,7 +53,7 @@ There are a total of 3 microservices:
 To better understand, below is a diagram of the assignment's structure and how communications are made.
 // insert ur diagram here
 
-<p align="center">(<a href="#top">back to top</a>)</p>
+<p align="left">(<a href="#top">back to top</a>)</p>
 
 
 ### Built With
@@ -65,7 +65,7 @@ Vanilla Javascript and HTML CSS is used for the frontend.
 * [HTML](https://html.com/)
 * [JavaScript](https://www.javascript.com/)
 * [JQuery](https://jquery.com)
-<p align="center">(<a href="#top">back to top</a>)</p>
+<p align="left">(<a href="#top">back to top</a>)</p>
 
 
 <!-- GETTING STARTED -->
@@ -89,7 +89,7 @@ Make sure that MySQL and Golang is downloaded on your device.
    ```
 3. Execute database start script in `/db/ExecStartDB.sql`
 
-<p align="center">(<a href="#top">back to top</a>)</p>
+<p align="left">(<a href="#top">back to top</a>)</p>
 
 
 <!-- USAGE EXAMPLES -->
@@ -111,7 +111,7 @@ To start using the ride-hailing platform, follow the below steps:
  ```
 2. Open frontend by opening `account.html` in `assignment1/Frontend_web`
 
-<p align="center">(<a href="#top">back to top</a>)</p>
+<p align="left">(<a href="#top">back to top</a>)</p>
 
 
 <!-- ROADMAP -->
@@ -121,7 +121,7 @@ To start using the ride-hailing platform, follow the below steps:
 - [x] Frontend using HTML JavaScript
 - [ ] Tidy up both backend and frontend
 
-<p align="center">(<a href="#top">back to top</a>)</p>
+<p align="left">(<a href="#top">back to top</a>)</p>
 
 
 <!-- LICENSE -->
@@ -129,7 +129,7 @@ To start using the ride-hailing platform, follow the below steps:
 
 Distributed under the MIT License. See `LICENSE.txt` for more information.
 
-<p align="center">(<a href="#top">back to top</a>)</p>
+<p align="left">(<a href="#top">back to top</a>)</p>
 
 
 <!-- CONTACT -->
@@ -139,24 +139,8 @@ Kester Yeo - [School Email](s10185261@connect.np.edu.sg)
 
 Project Link: [https://github.com/EchoKes/Assignment1](https://github.com/EchoKes/Assignment1)
 
-<p align="center">(<a href="#top">back to top</a>)</p>
+<p align="left">(<a href="#top">back to top</a>)</p>
 
-
-<!-- ACKNOWLEDGMENTS -->
-## Acknowledgments
-
-Use this space to list resources you find helpful and would like to give credit to. I've included a few of my favorites to kick things off!
-
-* [Choose an Open Source License](https://choosealicense.com)
-* [GitHub Emoji Cheat Sheet](https://www.webpagefx.com/tools/emoji-cheat-sheet)
-* [Malven's Flexbox Cheatsheet](https://flexbox.malven.co/)
-* [Malven's Grid Cheatsheet](https://grid.malven.co/)
-* [Img Shields](https://shields.io)
-* [GitHub Pages](https://pages.github.com)
-* [Font Awesome](https://fontawesome.com)
-* [React Icons](https://react-icons.github.io/react-icons/search)
-
-<p align="right">(<a href="#top">back to top</a>)</p>
 
 <!-- MARKDOWN LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
