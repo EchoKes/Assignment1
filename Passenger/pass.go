@@ -24,9 +24,6 @@ type PassengerAccount struct {
 	Availability bool   `json:"Availability"`
 }
 
-type Trips struct {
-}
-
 type TripRequest struct {
 	Passengerid string `json:"PassengerID"`
 	Firstname   string `json:"FirstName"`
