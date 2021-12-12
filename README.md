@@ -42,13 +42,15 @@
 ![Driver_Screen_Shot][driver-screenshot]
 ---
 
-This assignment's requirements are to create 2 or more microservices which will be ran in the background while a frontend such as website can be used to interact with the functions in the microservices. 
+The requirements were to create 2 or more microservices. 
+3 microservices were created which will be ran in the background while a monolithic frontend such as website can be used to interact with the functions in the microservices. 
 
-There are a total of 3 microservices:
+The 3 microservices:
 (the functions will be shown in each microservice.)
 1. Passenger
   * Log in
   * View all trips (in reverse chronological order) 
+  * Delete
 2. Trip
   * Updates users status
   * Request trip (passenger)
@@ -57,22 +59,31 @@ There are a total of 3 microservices:
   * Log in
   * Start ride
   * End ride
+  * Delete
 
-To better understand, below is a diagram of the assignment's structure and how communications are made.
-// insert ur diagram here
+**To better understand the interactions, below are 2 diagrams; The microservice architecture and frontend diagram.**
 
+![Microservice-Diagram][msdiag-screenshot]
+---
+![Frontend-Diagram][fediag-screenshot]
+---
 <p align="left">(<a href="#top">back to top</a>)</p>
 
 
 ### Built With
 
 The main objective of this assignment is to put the knowledge and skills learnt about Golang to use. 
-Vanilla Javascript and HTML CSS is used for the frontend.
+The chosen tech stack is:
+- Vanilla Javascript and HTML5 frontend. (Monolithic)
+- Golang for backend. (Microservices)
+- MySQL for database.
+
 
 * [Golang](https://go.dev/)
 * [HTML](https://html.com/)
 * [JavaScript](https://www.javascript.com/)
-* [JQuery](https://jquery.com)
+* [JQuery](https://jquery.com/)
+* [MySQL](https://www.mysql.com/)
 <p align="left">(<a href="#top">back to top</a>)</p>
 
 
@@ -81,7 +92,7 @@ Vanilla Javascript and HTML CSS is used for the frontend.
 
 ### Prerequisites
 
-Make sure that MySQL and Golang is downloaded on your device.
+Please ensure that MySQL and Golang is installed and operational on your device.
 
 ### Installation
 
@@ -124,9 +135,9 @@ To start using the ride-hailing platform, follow the below steps:
 
 <!-- ROADMAP -->
 ## Roadmap
-
-- [x] Backend using Golang
-- [x] Frontend using HTML JavaScript
+- [X] Set up MySQL database
+- [x] Create microservices backend using Golang
+- [x] Create frontend using HTML JavaScript
 - [ ] Tidy up both backend and frontend
 
 <p align="left">(<a href="#top">back to top</a>)</p>
@@ -156,3 +167,5 @@ Project Link: [https://github.com/EchoKes/Assignment1](https://github.com/EchoKe
 [account-screenshot2]: ./images/register_driver.PNG
 [passenger-screenshot]: ./images/viewtrips.PNG
 [driver-screenshot]: ./images/driverpage.PNG
+[msdiag-screenshot]: ./images/msdiag.PNG
+[fediag-screenshot]: ./images/fediag.PNG
