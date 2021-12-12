@@ -61,7 +61,7 @@ The 3 microservices:
   * End ride
   * Delete
 
-***To better understand the interactions, below are 2 diagrams; The microservice architecture and frontend diagram.***
+**To better understand the interactions, below are 2 diagrams; The microservice architecture and frontend diagram.**
 
 ![Microservice-Diagram][msdiag-screenshot]
 ---
