@@ -71,6 +71,12 @@ func passenger(w http.ResponseWriter, r *http.Request) {
 	// defer the close till after main function has finished executing
 	defer db.Close()
 
+	// using DELETE to delete
+	// in this case, delete function is not allowed
+	if r.Method == "DELETE" {
+		w.WriteHeader(http.StatusNotAcceptable)
+		w.Write([]byte("406 - Unable to delete"))
+	}
 	if r.Header.Get("Content-type") == "application/json" {
 		// using POST to create new account
 		if r.Method == "POST" {
@@ -138,13 +144,6 @@ func passenger(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusUnprocessableEntity)
 				w.Write([]byte("422 - Please enter account details in JSON format"))
 			}
-		}
-
-		// using DELETE to delete
-		// in this case, delete function is not allowed
-		if r.Method == "DELETE" {
-			w.WriteHeader(http.StatusNotAcceptable)
-			w.Write([]byte("406 - Unable to delete"))
 		}
 	}
 }

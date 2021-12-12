@@ -44,6 +44,12 @@
         </form>
         <p id="updateErr"></p>
     </div>
+
+    <div class="Delete">
+        <h2>Delete Account</h2>
+        <input type="button" onclick="DeleteAcc()" value="Delete">
+        <p id="deleteErr"></p>
+    </div>
 </body>
 
 <script>
@@ -198,6 +204,22 @@
                 console.log(textStatus);
                 $("#tripDisplay").css('color', 'red');
                 $("#tripDisplay").text(textStatus);
+            }
+        });
+    }
+
+    // deletes user account
+    function DeleteAcc() {
+        $.ajax({
+            type: "DELETE",
+            url: "http://localhost:2000/driver",
+            error: function (textStatus, errorThrown) {
+                console.log(errorThrown);
+                let rt = textStatus.responseText;
+                console.log(rt);
+                let errText = rt.substring(6, rt.length);
+                $("#deleteErr").css('color', 'red');
+                $("#deleteErr").text(errText);
             }
         });
     }

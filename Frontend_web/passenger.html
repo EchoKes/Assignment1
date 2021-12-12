@@ -76,6 +76,12 @@
         </form>
     </div>
 
+    <div class="Delete">
+        <h2>Delete Account</h2>
+        <input type="button" onclick="DeleteAcc()" value="Delete">
+        <p id="deleteErr"></p>
+    </div>
+
 </body>
 
 <script>
@@ -290,6 +296,21 @@
         }
     }
 
+    // deletes user account
+    function DeleteAcc() {
+        $.ajax({
+            type: "DELETE",
+            url: "http://localhost:1000/passenger",
+            error: function (textStatus, errorThrown) {
+                console.log(errorThrown);
+                let rt = textStatus.responseText;
+                console.log(rt);
+                let errText = rt.substring(6, rt.length);
+                $("#deleteErr").css('color', 'red');
+                $("#deleteErr").text(errText);
+            }
+        });
+    }
 
 </script>
 

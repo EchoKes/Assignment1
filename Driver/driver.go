@@ -52,6 +52,13 @@ func driver(w http.ResponseWriter, r *http.Request) {
 	// defer the close till after main function has finished executing
 	defer db.Close()
 
+	// using DELETE to delete
+	// in this case, delete function is not allowed
+	if r.Method == "DELETE" {
+		w.WriteHeader(http.StatusNotAcceptable)
+		w.Write([]byte("406 - Unable to delete"))
+	}
+
 	if r.Header.Get("Content-type") == "application/json" {
 		// using POST to create new account
 		if r.Method == "POST" {
@@ -117,13 +124,6 @@ func driver(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusUnprocessableEntity)
 				w.Write([]byte("422 - Please enter account details in JSON format"))
 			}
-		}
-
-		// using DELETE to delete
-		// in this case, delete function is not allowed
-		if r.Method == "DELETE" {
-			w.WriteHeader(http.StatusNotAcceptable)
-			w.Write([]byte("406 - Unable to delete"))
 		}
 	}
 }
@@ -467,7 +467,7 @@ func main() {
 	origins := handlers.AllowedOrigins([]string{"*"})
 	methods := handlers.AllowedMethods([]string{"GET", "POST", "PUT", "DELETE"})
 	router.HandleFunc("/", landing)
-	router.HandleFunc("/driver", driver).Methods("POST", "PUT")
+	router.HandleFunc("/driver", driver).Methods("POST", "PUT", "DELETE")
 	router.HandleFunc("/availabledrivers", availDrivers).Methods("GET")
 	router.HandleFunc("/driver/{driverid}", home).Methods("GET")
 	router.HandleFunc("/driver/{driverid}/details", details).Methods("GET", "POST")
