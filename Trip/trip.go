@@ -56,7 +56,7 @@ func home(w http.ResponseWriter, r *http.Request) {
 
 func requestTrip(w http.ResponseWriter, r *http.Request) {
 	// mysql init
-	db, err := sql.Open("mysql", "root:password@tcp(127.0.0.1:3306)/db_assignment1")
+	db, err := sql.Open("mysql", "root:password@tcp(db:3307)/db_assignment1")
 
 	// handle db error
 	if err != nil {
@@ -121,7 +121,7 @@ func requestTrip(w http.ResponseWriter, r *http.Request) {
 
 func tripStartEnd(w http.ResponseWriter, r *http.Request) {
 	// mysql init
-	db, err := sql.Open("mysql", "root:password@tcp(127.0.0.1:3306)/db_assignment1")
+	db, err := sql.Open("mysql", "root:password@tcp(db:3307)/db_assignment1")
 
 	// handle db error
 	if err != nil {
@@ -166,7 +166,7 @@ func tripStartEnd(w http.ResponseWriter, r *http.Request) {
 
 func getPassengerTrips(w http.ResponseWriter, r *http.Request) {
 	// mysql init
-	db, err := sql.Open("mysql", "root:password@tcp(127.0.0.1:3306)/db_assignment1")
+	db, err := sql.Open("mysql", "root:password@tcp(db:3307)/db_assignment1")
 
 	// handle db error
 	if err != nil {

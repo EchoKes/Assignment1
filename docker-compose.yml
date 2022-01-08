@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  # MYSQL Database
+  db:
+    container_name: "db_mysql"
+    build:
+      context: ./db
+      dockerfile: db.Dockerfile
+    networks:
+      - default
+    environment:
+      MYSQL_TCP_PORT: 3307
+      MYSQL_ROOT_PASSWORD: "password"
+    ports:
+      - 3307:3307
+    deploy:
+      restart_policy:
+        condition: on-failure
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  # Frontend HTML
+  frontend:
+    container_name: frontend-server
+    depends_on:
+      - db
+      - driver_ms
+      - passenger_ms
+      - trip_ms
+    build:
+      context: ./Frontend_web
+      dockerfile: frontend.Dockerfile
+    ports:
+      - 4000:80
+    deploy:
+      restart_policy:
+        condition: on-failure
+
+  # Driver Microservice
+  driver_ms:
+    depends_on:
+      - db
+    build:
+      context: ./Driver
+      dockerfile: driver.Dockerfile
+    container_name: driver-ms
+    ports:
+      - 2000:2000
+
+  # Passenger Microservice
+  passenger_ms:
+    depends_on:
+      - db
+    build:
+      context: ./Passenger
+      dockerfile: passenger.Dockerfile
+    container_name: passenger-ms
+    ports:
+      - 1000:1000
+
+  # Trip Microservice
+  trip_ms:
+    depends_on:
+      - db
+    build:
+      context: ./Trip
+      dockerfile: trip.Dockerfile
+    container_name: trip-ms
+    ports:
+      - 3000:3000
+
+networks:
+  default: null
+volumes:
+  mysql_data: null
+
+# docker run -e MYSQL_ROOT_PASSWORD=password --name db_mysql -p 3307:3306 -v db_mysql:/var/lib/mysql

@@ -1,9 +1,12 @@
+CREATE USER 'user'@'%' IDENTIFIED BY 'password';
+GRANT ALL ON *.* TO 'user'@'%';
+
 create database db_assignment1;
 use db_assignment1; 
 
 -- -- (for creating Passengers table)
 
-create table Passengers
+create table passengers
 (
 	PassengerID binary(16) primary key, 
 	FirstName varchar(30),
@@ -16,7 +19,7 @@ create table Passengers
 
 -- -- (for creating Drivers table)
 
-create table Drivers
+create table drivers
 (
 	DriverID binary(16) primary key,
 	FirstName varchar(30),
@@ -31,7 +34,7 @@ create table Drivers
 
 -- -- (for creating Trips table)
 
-create table Trips
+create table trips
 (
 	TripID binary(16) primary key,
 	PassengerID binary(16),

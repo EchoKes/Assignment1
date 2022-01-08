@@ -58,7 +58,7 @@ func passenger(w http.ResponseWriter, r *http.Request) {
 	// fmt.Fprintf(w, "Create an account")
 
 	// mysql init
-	db, err := sql.Open("mysql", "root:password@tcp(127.0.0.1:3306)/db_assignment1")
+	db, err := sql.Open("mysql", "root:password@tcp(db:3307)/db_assignment1")
 
 	// handle db error
 	if err != nil {
@@ -150,7 +150,7 @@ func home(w http.ResponseWriter, r *http.Request) {
 	passengerid := params["passengerid"]
 
 	// mysql init
-	db, err := sql.Open("mysql", "root:password@tcp(127.0.0.1:3306)/db_assignment1")
+	db, err := sql.Open("mysql", "root:password@tcp(db:3307)/db_assignment1")
 
 	// handle db error
 	if err != nil {
@@ -181,7 +181,7 @@ func details(w http.ResponseWriter, r *http.Request) {
 	passengerid := params["passengerid"]
 
 	// mysql init
-	db, err := sql.Open("mysql", "root:password@tcp(127.0.0.1:3306)/db_assignment1")
+	db, err := sql.Open("mysql", "root:password@tcp(db:3307)/db_assignment1")
 
 	// handle db error
 	if err != nil {
@@ -228,7 +228,7 @@ func trips(w http.ResponseWriter, r *http.Request) {
 	passid := params["passengerid"]
 
 	// mysql init
-	db, err := sql.Open("mysql", "root:password@tcp(127.0.0.1:3306)/db_assignment1")
+	db, err := sql.Open("mysql", "root:password@tcp(db:3307)/db_assignment1")
 
 	// handle db error
 	if err != nil {
@@ -263,7 +263,7 @@ func login(w http.ResponseWriter, r *http.Request) {
 	mobile := params["mobile"]
 
 	// mysql init
-	db, err := sql.Open("mysql", "root:password@tcp(127.0.0.1:3306)/db_assignment1")
+	db, err := sql.Open("mysql", "root:password@tcp(db:3307)/db_assignment1")
 
 	// handle db error
 	if err != nil {
@@ -468,7 +468,7 @@ func RetrievePassDetails(db *sql.DB, id string) PassengerAccount {
 
 func main() {
 	// // mysql init
-	// db, err := sql.Open("mysql", "root:password@tcp(127.0.0.1:3306)/db_assignment1")
+	// db, err := sql.Open("mysql", "root:password@tcp(db:3307)/db_assignment1")
 
 	// // handle db error
 	// if err != nil {
